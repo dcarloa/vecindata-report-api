@@ -2,7 +2,7 @@ import anthropic
 import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.cache import Cache
@@ -22,7 +22,12 @@ _cache = Cache(settings.cache_dir)
 class ReportRequest(BaseModel):
     address: str
     logo_url: str | None = None
-    brand_color: str | None = None
+    # Restricted to a strict 6-digit hex color: brand_color is interpolated raw
+    # into a <style> block in the PDF template, and Jinja2 autoescaping does not
+    # escape CSS metacharacters. Without this constraint, a crafted value could
+    # inject arbitrary CSS and, since rendering runs a real headless Chromium,
+    # trigger SSRF against internal services or cloud metadata endpoints.
+    brand_color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
 
 
 @app.exception_handler(ValueError)

@@ -66,3 +66,24 @@ def test_create_report_branding_fields_default_to_none(mock_build, mock_render):
     rendered_report = mock_render.call_args[0][0]
     assert rendered_report["logo_url"] is None
     assert rendered_report["brand_color"] is None
+
+
+@patch("app.main.render_pdf")
+@patch("app.main.build_full_report")
+def test_create_report_rejects_malformed_brand_color(mock_build, mock_render):
+    """brand_color is interpolated raw into a <style> block in the PDF template.
+    Jinja2 autoescaping does not escape CSS metacharacters, so a value like
+    'red; } h1 { background: url(http://evil) } /*' could inject arbitrary CSS
+    and, since render_pdf runs a real headless Chromium, trigger SSRF. Only a
+    strict 6-digit hex color must be accepted; anything else must 422 before
+    the request ever reaches the orchestrator or the renderer."""
+    response = client.post(
+        "/reports",
+        json={
+            "address": "Calle 100, Bogotá",
+            "brand_color": "red; } h1 { background: url(http://evil) } /*",
+        },
+    )
+    assert response.status_code == 422
+    mock_build.assert_not_called()
+    mock_render.assert_not_called()
