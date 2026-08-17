@@ -25,6 +25,20 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * r * math.asin(math.sqrt(a))
 
 
+def _get_lat(element: dict) -> float:
+    """Extract latitude from node (direct) or way/relation (from center) element."""
+    if "lat" in element:
+        return element["lat"]
+    return element["center"]["lat"]
+
+
+def _get_lon(element: dict) -> float:
+    """Extract longitude from node (direct) or way/relation (from center) element."""
+    if "lon" in element:
+        return element["lon"]
+    return element["center"]["lon"]
+
+
 class OverpassPOIProvider:
     def __init__(self, client: httpx.Client | None = None, cache: Cache | None = None):
         self._client = client or httpx.Client(timeout=30.0)
@@ -39,9 +53,9 @@ class OverpassPOIProvider:
 
         tags = _CATEGORY_TAGS[category]
         clauses = "".join(
-            f'node["{key}"="{value}"](around:{radius_m},{lat},{lon});' for key, value in tags
+            f'nwr["{key}"="{value}"](around:{radius_m},{lat},{lon});' for key, value in tags
         )
-        query = f"[out:json];({clauses});out body;"
+        query = f"[out:json];({clauses});out center;"
 
         response = self._client.post(OVERPASS_URL, data={"data": query})
         response.raise_for_status()
@@ -52,9 +66,9 @@ class OverpassPOIProvider:
                 POI(
                     name=el.get("tags", {}).get("name", "Sin nombre"),
                     category=category,
-                    lat=el["lat"],
-                    lon=el["lon"],
-                    distance_m=_haversine_m(lat, lon, el["lat"], el["lon"]),
+                    lat=_get_lat(el),
+                    lon=_get_lon(el),
+                    distance_m=_haversine_m(lat, lon, _get_lat(el), _get_lon(el)),
                 )
                 for el in elements
             ),
