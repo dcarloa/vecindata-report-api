@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Reporte de ubicación</title>
+</head>
+<body>
+  <h1>{{ address }}</h1>
+  <img src="{{ map_url }}" alt="Mapa">
+  <img src="{{ satellite_url }}" alt="Imagen satelital">
+
+  <h2>Puntaje de zona: {{ score.global_score }}</h2>
+  <ul>
+  {% for sub in score.sub_scores %}
+    <li>{{ sub.name }}: {{ sub.value }} — {{ sub.explanation }}</li>
+  {% endfor %}
+  </ul>
+
+  <h3>Qué hay alrededor</h3>
+  <ul>
+  {% for category, items in pois.items() %}
+    <li>{{ category }}: {{ items|length }} encontrados</li>
+  {% endfor %}
+  </ul>
+
+  <h3>Accesibilidad</h3>
+  <ul>
+  {% for iso in isochrones %}
+    <li>{{ iso.minutes }} min caminando</li>
+  {% endfor %}
+  </ul>
+
+  <p>{{ narrative }}</p>
+  <p><small>Datos de OpenStreetMap y otras fuentes abiertas; pueden no estar actualizados.</small></p>
+</body>
+</html>
