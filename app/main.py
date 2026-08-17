@@ -58,17 +58,34 @@ def health() -> dict:
 
 @app.post("/reports")
 def create_report(request: ReportRequest) -> Response:
-    report = build_full_report(
-        address=request.address,
-        geocoder=get_geocoder(settings, cache=_cache),
-        poi_provider=OverpassPOIProvider(cache=_cache),
-        routing_provider=OpenRouteServiceRouting(api_key=settings.openrouteservice_api_key, cache=_cache),
-        staticmap_provider=MapboxStaticMapProvider(access_token=settings.mapbox_access_token),
-        narrative_generator=NarrativeGenerator(
-            client=genai.Client(vertexai=True, api_key=settings.google_api_key)
-        ),
-    )
-    report["logo_url"] = request.logo_url
-    report["brand_color"] = request.brand_color
-    pdf_bytes = render_pdf(report)
-    return Response(content=pdf_bytes, media_type="application/pdf")
+    try:
+        report = build_full_report(
+            address=request.address,
+            geocoder=get_geocoder(settings, cache=_cache),
+            poi_provider=OverpassPOIProvider(cache=_cache),
+            routing_provider=OpenRouteServiceRouting(api_key=settings.openrouteservice_api_key, cache=_cache),
+            staticmap_provider=MapboxStaticMapProvider(access_token=settings.mapbox_access_token),
+            narrative_generator=NarrativeGenerator(
+                client=genai.Client(vertexai=True, api_key=settings.google_api_key)
+            ),
+        )
+        report["logo_url"] = request.logo_url
+        report["brand_color"] = request.brand_color
+        pdf_bytes = render_pdf(report)
+        return Response(content=pdf_bytes, media_type="application/pdf")
+    except (ValueError, httpx.HTTPError):
+        # Handled by the exception_handlers above — both are registered as
+        # specific types, so they route through FastAPI's ExceptionMiddleware
+        # (inside CORSMiddleware). Re-raise to let that dispatch happen.
+        raise
+    except Exception:
+        # Any other error shape (e.g. the Gemini SDK's own exceptions,
+        # Playwright's) — returned directly rather than re-raised, since a
+        # handler registered via @app.exception_handler(Exception) would
+        # route to Starlette's ServerErrorMiddleware, which sits *outside*
+        # CORSMiddleware and would leave the response without CORS headers,
+        # making the browser block it entirely.
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Ocurrió un error inesperado en el servidor."},
+        )

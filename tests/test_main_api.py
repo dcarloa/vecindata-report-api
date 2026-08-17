@@ -43,6 +43,24 @@ def test_upstream_provider_failure_returns_502(mock_build):
     assert "proveedor de datos externo" in response.json()["detail"]
 
 
+@patch("app.main.build_full_report", side_effect=RuntimeError("boom"))
+def test_unhandled_exception_returns_500_with_cors_headers(mock_build):
+    """A 4th error shape exists beyond ValueError/httpx.HTTPError: the Anthropic/Gemini
+    SDK and Playwright can both raise their own exception types. Uncaught, Starlette's
+    ServerErrorMiddleware generates the 500 *outside* CORSMiddleware, so the browser
+    blocks the response entirely and the operator sees a misleading "can't connect"
+    instead of the real error. A catch-all handler routes through FastAPI's own
+    ExceptionMiddleware (inside CORSMiddleware), so the header is actually applied."""
+    response = client.post(
+        "/reports",
+        json={"address": "Calle 100, Bogotá"},
+        headers={"Origin": "http://localhost:5173"},
+    )
+    assert response.status_code == 500
+    assert response.json()["detail"] == "Ocurrió un error inesperado en el servidor."
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
 @patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
 @patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
 def test_create_report_passes_branding_fields_into_report_dict(mock_build, mock_render):
