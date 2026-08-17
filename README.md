@@ -67,3 +67,42 @@ plantilla completa:
 
 Geocodificación (Nominatim) y puntos de interés (Overpass) no requieren
 credenciales.
+
+## Despliegue (Google Cloud Run)
+
+Requiere el proyecto de GCP ya usado para Gemini (o cualquier otro proyecto con
+facturación habilitada — el tier gratis de Cloud Run no cobra dentro de sus
+límites, pero Google pide una tarjeta vinculada al proyecto).
+
+1. Instala `gcloud` CLI si no lo tienes: https://cloud.google.com/sdk/docs/install
+2. Autentícate y selecciona el proyecto:
+
+   ```bash
+   gcloud auth login
+   gcloud config set project vecindata
+   ```
+
+3. Despliega (un solo comando — construye la imagen desde el `Dockerfile` vía
+   Cloud Build y la publica):
+
+   ```bash
+   gcloud run deploy vecindata-report-api \
+     --source . \
+     --region us-central1 \
+     --allow-unauthenticated \
+     --set-env-vars GOOGLE_API_KEY=tu-key,MAPBOX_ACCESS_TOKEN=tu-token,OPENROUTESERVICE_API_KEY=tu-key,OPERATOR_ACCESS_KEY=una-clave-larga-que-tu-eliges,PROVIDER_MODE=free
+   ```
+
+   Al terminar, imprime la URL del servicio (algo como
+   `https://vecindata-report-api-xxxxx-uc.a.run.app`) — **guárdala**, la
+   necesitas para configurar `vecindata-web`.
+
+4. Actualiza `app/main.py`'s `allow_origins` en `CORSMiddleware` para incluir el
+   dominio real de Cloudflare Pages una vez que lo tengas (paso 3 de
+   `vecindata-web` abajo), y vuelve a correr el comando del paso 3 para
+   redesplegar con el CORS correcto.
+
+Para cambiar cualquier variable de entorno después (ej. rotar
+`OPERATOR_ACCESS_KEY`), vuelve a correr el mismo comando `gcloud run deploy`
+con el nuevo valor — no hace falta reconstruir la imagen si solo cambian
+variables de entorno (`gcloud run services update` también sirve para eso).
