@@ -37,3 +37,44 @@ def test_verify_groundedness_passes_when_mentioned_categories_have_data():
     report_data = {"pois": {"parques": [{"name": "Parque X"}]}}
     text = "La zona cuenta con un parque cercano."
     assert verify_groundedness(text, report_data) is True
+
+
+def test_verify_groundedness_flags_price_mentions_as_ungrounded():
+    report_data = {"pois": {}}
+    text = "El precio del metro cuadrado ronda los $4.500.000."
+    assert verify_groundedness(text, report_data) is False
+
+
+def test_verify_groundedness_does_not_flag_word_boundary_false_positive():
+    report_data = {"pois": {"parques": []}}
+    text = "El edificio cuenta con parqueadero para visitantes."
+    assert verify_groundedness(text, report_data) is True
+
+
+def test_verify_groundedness_allows_negated_absence_mention():
+    report_data = {"pois": {"salud": []}}
+    text = "No hay hospitales ni clinicas cercanas."
+    assert verify_groundedness(text, report_data) is True
+
+
+def test_verify_groundedness_catches_plural_and_accent_variants():
+    report_data = {"pois": {"restaurantes": []}}
+    text = "Hay cafeterias y locales comerciales en el sector."
+    assert verify_groundedness(text, report_data) is False
+
+
+def test_generate_sends_grounding_instruction_in_system_prompt():
+    captured = {}
+
+    class CapturingClient:
+        def __init__(self):
+            self.messages = self
+
+        def create(self, **kwargs):
+            captured.update(kwargs)
+            return _FakeMessage("Texto de prueba.")
+
+    generator = NarrativeGenerator(client=CapturingClient())
+    generator.generate({"pois": {}})
+    assert "EXCLUSIVAMENTE" in captured["system"]
+    assert "no inventes" in captured["system"].lower()
