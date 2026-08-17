@@ -19,7 +19,7 @@
   <h3>Qué hay alrededor</h3>
   <ul>
   {% for category, items in pois.items() %}
-    <li>{{ category }}: {{ items|length }} encontrados</li>
+    <li>{{ category }}: {{ items|length }} encontrados{% if items %} (el más cercano a {{ "%.0f"|format(items[0].distance_m) }} m){% endif %}</li>
   {% endfor %}
   </ul>
 
