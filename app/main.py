@@ -1,6 +1,6 @@
 import httpx
 from google import genai
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
@@ -57,7 +57,9 @@ def health() -> dict:
 
 
 @app.post("/reports")
-def create_report(request: ReportRequest) -> Response:
+def create_report(request: ReportRequest, x_operator_key: str | None = Header(default=None)) -> Response:
+    if settings.operator_access_key and x_operator_key != settings.operator_access_key:
+        return JSONResponse(status_code=401, content={"detail": "Clave de acceso inválida."})
     try:
         report = build_full_report(
             address=request.address,

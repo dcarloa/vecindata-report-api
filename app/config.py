@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     mapbox_access_token: str = ""
     openrouteservice_api_key: str = ""
+    operator_access_key: str = ""
 
 
 settings = Settings()

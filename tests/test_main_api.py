@@ -3,6 +3,7 @@ from unittest.mock import patch
 import httpx
 from fastapi.testclient import TestClient
 from app.main import app
+from app.config import settings
 
 client = TestClient(app)
 
@@ -130,3 +131,49 @@ def test_cors_rejects_unlisted_origin():
         },
     )
     assert "access-control-allow-origin" not in response.headers
+
+
+@patch("app.main.build_full_report")
+def test_missing_access_key_returns_401_without_calling_build_full_report(mock_build, monkeypatch):
+    monkeypatch.setattr(settings, "operator_access_key", "secret123")
+    response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Clave de acceso inválida."
+    mock_build.assert_not_called()
+
+
+@patch("app.main.build_full_report")
+def test_wrong_access_key_returns_401_without_calling_build_full_report(mock_build, monkeypatch):
+    monkeypatch.setattr(settings, "operator_access_key", "secret123")
+    response = client.post(
+        "/reports",
+        json={"address": "Calle 100, Bogotá"},
+        headers={"X-Operator-Key": "wrong-key"},
+    )
+    assert response.status_code == 401
+    mock_build.assert_not_called()
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+def test_correct_access_key_allows_the_request_through(mock_build, mock_render, monkeypatch):
+    monkeypatch.setattr(settings, "operator_access_key", "secret123")
+    response = client.post(
+        "/reports",
+        json={"address": "Calle 100, Bogotá"},
+        headers={"X-Operator-Key": "secret123"},
+    )
+    assert response.status_code == 200
+    mock_build.assert_called_once()
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+def test_no_access_key_configured_disables_the_gate(mock_build, mock_render, monkeypatch):
+    # settings.operator_access_key defaults to "" — the gate must stay disabled
+    # so local development and every other existing test (none of which send
+    # the header) keep working unchanged.
+    monkeypatch.setattr(settings, "operator_access_key", "")
+    response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    assert response.status_code == 200
+    mock_build.assert_called_once()
