@@ -1,0 +1,6 @@
+from typing import Protocol
+
+
+class StaticMapProvider(Protocol):
+    def map_url(self, lat: float, lon: float, zoom: int = 16, width: int = 600, height: int = 400) -> str: ...
+    def satellite_url(self, lat: float, lon: float, zoom: int = 18, width: int = 600, height: int = 400) -> str: ...
