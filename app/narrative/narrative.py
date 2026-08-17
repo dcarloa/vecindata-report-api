@@ -1,3 +1,4 @@
+import re
 import unicodedata
 
 _SYSTEM_PROMPT = (
@@ -40,8 +41,10 @@ _CATEGORY_KEYWORDS = {
         "centro medico", "centros medicos", "consultorio", "consultorios",
     ],
     "transporte": [
-        "estacion de transporte", "estaciones de transporte", "estacion de metro", "estaciones de metro",
-        "parada de bus", "paradas de bus", "transporte publico",
+        "transporte", "transporte publico", "parada", "paradas",
+        "estacion de transporte", "estaciones de transporte",
+        "estacion de metro", "estaciones de metro", "estacion del metro", "estaciones del metro",
+        "linea de metro", "transmilenio",
     ],
     "comercio": [
         "supermercado", "supermercados", "centro comercial", "centros comerciales", "comercio", "comercios",
@@ -54,52 +57,63 @@ _CATEGORY_KEYWORDS = {
     ],
 }
 
-_NEGATION_TRIGGERS = ["no hay", "sin ", "no existen", "no se registran", "no cuenta con", "carece de"]
-
 _PRICE_KEYWORDS = [
-    "precio", "precios", "valorizacion", "valorizaciones", "avaluo", "avaluos",
-    "costo", "$", "%", "m2", "pesos",
+    "precio", "precios", "valor", "valorizacion", "valorizaciones", "valoriza", "valorizar",
+    "avaluo", "avaluos", "costo", "millon", "millones", "cotiza", "cotizacion",
+    "arriendo", "canon", "pesos", "cop", "uvr", "smmlv",
 ]
 
+_PRICE_SYMBOLS = ["$", "%", "m2"]
 
-def _mentions_ungrounded_keyword(text_normalized: str, keyword: str) -> bool:
-    import re
 
-    match = re.search(r"\b" + re.escape(keyword) + r"\b", text_normalized)
-    if not match:
-        return False
-    window = text_normalized[max(0, match.start() - 25):match.start()]
-    if any(trigger in window for trigger in _NEGATION_TRIGGERS):
-        return False
-    return True
+def _contains_word(text_normalized: str, phrase: str) -> bool:
+    return re.search(r"\b" + re.escape(phrase) + r"\b", text_normalized) is not None
 
 
 def verify_groundedness(text: str, report_data: dict) -> bool:
     """
     Heuristic, category-presence-only groundedness check for the AI-written
-    narrative. Two things make text "ungrounded":
+    narrative.
 
-    1. A category-related keyword appears (and isn't just a negated mention,
-       e.g. "no hay parques cercanos" is allowed) while that category has
-       zero POIs in report_data.
-    2. Any price/valuation-related keyword appears at all — report_data
-       never contains price data in this version, so any such mention is
-       necessarily fabricated.
+    Text is "ungrounded" if:
+    1. Any price/valuation-related word or symbol appears at all —
+       report_data never contains price data in this version, so any such
+       mention is necessarily fabricated.
+    2. A category-related keyword appears while that category has zero
+       POIs in report_data.
 
-    Known limitation: this is category-presence matching, not entity
-    verification. If a category has at least one real POI, this check
-    cannot detect an invented NAME for a different place in that category
-    (e.g. an invented "Hospital San Ignacio" is not caught as long as some
-    real salud POI exists). It also does not exhaustively cover every way
-    to reference a category in Spanish (e.g. bare "metro" is intentionally
-    excluded from transporte keywords because it collides with "metros
-    cuadrados", a common area unit — this is an accepted gap, not a bug).
+    This check does NOT special-case negation ("no hay parques cercanos").
+    The system prompt instructs the model to omit missing categories
+    entirely rather than mention their absence; if the model ignores that
+    instruction, this check conservatively rejects the text (a safe
+    failure — the narrative gets replaced with a fallback message — rather
+    than trying to parse negation, which is unreliable with simple
+    heuristics and was found to let real fabrications through when a
+    negated mention of one category preceded a fabricated mention of
+    another in the same sentence).
+
+    Known limitations (accepted, not bugs):
+    - Category-presence matching, not entity verification: if a category
+      has at least one real POI, this check cannot detect an invented NAME
+      for a different place in that category.
+    - Bare "café"/"cafés" and bare "estación" are intentionally excluded
+      from keywords (color/coffee and "estación de servicio" gas-station
+      ambiguity); "cafetería" and specific transit-station phrases are
+      used instead, so an honest restaurantes/transporte mention using
+      only the ambiguous bare word, if fabricated, may not be caught.
+    - "m²" normalizes to "m2" and is treated as a price/measurement
+      signal; a legitimate area mention (e.g. "80 m² de área construida")
+      will also be rejected. Conservative by design, since report_data
+      doesn't carry area data either.
     """
     pois = report_data.get("pois", {})
     text_normalized = _normalize(text)
 
+    for symbol in _PRICE_SYMBOLS:
+        if symbol in text_normalized:
+            return False
     for price_keyword in _PRICE_KEYWORDS:
-        if _normalize(price_keyword) in text_normalized:
+        if _contains_word(text_normalized, _normalize(price_keyword)):
             return False
 
     for category, keywords in _CATEGORY_KEYWORDS.items():
@@ -107,7 +121,7 @@ def verify_groundedness(text: str, report_data: dict) -> bool:
         if has_data:
             continue
         for keyword in keywords:
-            if _mentions_ungrounded_keyword(text_normalized, _normalize(keyword)):
+            if _contains_word(text_normalized, _normalize(keyword)):
                 return False
 
     return True

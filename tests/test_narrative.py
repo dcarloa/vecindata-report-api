@@ -51,10 +51,15 @@ def test_verify_groundedness_does_not_flag_word_boundary_false_positive():
     assert verify_groundedness(text, report_data) is True
 
 
-def test_verify_groundedness_allows_negated_absence_mention():
+def test_verify_groundedness_conservatively_rejects_negated_absence_mention():
+    # Documented trade-off: since negation parsing proved unreliable (it let
+    # real fabrications through in adversarial testing), the checker no
+    # longer exempts negated mentions. The system prompt is relied on
+    # instead to avoid this phrasing; if the model uses it anyway, the
+    # text is conservatively rejected rather than risking a fabrication.
     report_data = {"pois": {"salud": []}}
     text = "No hay hospitales ni clinicas cercanas."
-    assert verify_groundedness(text, report_data) is True
+    assert verify_groundedness(text, report_data) is False
 
 
 def test_verify_groundedness_catches_plural_and_accent_variants():
@@ -78,3 +83,39 @@ def test_generate_sends_grounding_instruction_in_system_prompt():
     generator.generate({"pois": {}})
     assert "EXCLUSIVAMENTE" in captured["system"]
     assert "no inventes" in captured["system"].lower()
+
+
+def test_verify_groundedness_does_not_leak_fabrication_across_clauses():
+    report_data = {"pois": {"salud": [], "bancos": []}}
+    text = "No hay bancos, pero hay clinicas modernas."
+    assert verify_groundedness(text, report_data) is False
+
+
+def test_verify_groundedness_sin_embargo_does_not_suppress_fabrication():
+    report_data = {"pois": {"salud": []}}
+    text = "Sin embargo, el hospital queda a cinco minutos."
+    assert verify_groundedness(text, report_data) is False
+
+
+def test_verify_groundedness_catches_repeated_keyword_not_just_first_occurrence():
+    report_data = {"pois": {"salud": []}}
+    text = "No hay farmacias en el barrio; las farmacias mas cercanas estan en la avenida."
+    assert verify_groundedness(text, report_data) is False
+
+
+def test_verify_groundedness_catches_transmilenio_fabrication():
+    report_data = {"pois": {"transporte": []}}
+    text = "La estacion de TransMilenio queda a dos cuadras."
+    assert verify_groundedness(text, report_data) is False
+
+
+def test_verify_groundedness_catches_broader_valuation_language():
+    report_data = {"pois": {}}
+    text = "El inmueble se cotiza en 500 millones y su arriendo es alto."
+    assert verify_groundedness(text, report_data) is False
+
+
+def test_verify_groundedness_price_keyword_respects_word_boundary():
+    report_data = {"pois": {}}
+    text = "Es un barrio de gran aprecio entre las familias."
+    assert verify_groundedness(text, report_data) is True
