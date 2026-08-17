@@ -58,8 +58,17 @@ class OverpassPOIProvider:
         )
         query = f"[out:json];({clauses});out center;"
 
-        response = self._client.post(OVERPASS_URL, data={"data": query})
-        response.raise_for_status()
+        try:
+            response = self._client.post(OVERPASS_URL, data={"data": query})
+            response.raise_for_status()
+        except httpx.HTTPError:
+            # Overpass is a shared public resource that occasionally
+            # rate-limits or blocks callers outright. A POI outage should
+            # degrade the report (fewer POIs shown for this category)
+            # rather than fail the whole request — and the failure is
+            # deliberately not cached, so the next request retries instead
+            # of trusting a stale outage indefinitely.
+            return []
         elements = response.json().get("elements", [])
 
         elements_with_coords = (

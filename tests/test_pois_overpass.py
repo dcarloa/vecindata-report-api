@@ -26,6 +26,35 @@ def test_find_pois_returns_sorted_by_distance():
 
 
 @respx.mock
+def test_find_pois_returns_empty_list_when_overpass_is_unreachable():
+    # Overpass is a shared public resource that occasionally rate-limits or
+    # blocks callers outright (406/429/5xx) — a POI outage should degrade
+    # the report (fewer POIs shown) rather than fail the whole request.
+    respx.post(OVERPASS_URL).mock(return_value=httpx.Response(406))
+    provider = OverpassPOIProvider(client=httpx.Client())
+
+    pois = provider.find_pois(lat=4.6097, lon=-74.0817, category=Categoria.EDUCACION, radius_m=1000)
+
+    assert pois == []
+
+
+@respx.mock
+def test_find_pois_does_not_cache_an_overpass_failure(tmp_path):
+    from app.cache import Cache
+
+    cache = Cache(tmp_path)
+    route = respx.post(OVERPASS_URL).mock(return_value=httpx.Response(406))
+    provider = OverpassPOIProvider(client=httpx.Client(), cache=cache)
+
+    provider.find_pois(lat=4.6097, lon=-74.0817, category=Categoria.EDUCACION, radius_m=1000)
+    provider.find_pois(lat=4.6097, lon=-74.0817, category=Categoria.EDUCACION, radius_m=1000)
+
+    # A failure must not be cached as "confirmed zero results" — the second
+    # call should retry the network, not silently trust a stale outage.
+    assert route.call_count == 2
+
+
+@respx.mock
 def test_find_pois_uses_cache_and_skips_second_network_call(tmp_path):
     from app.cache import Cache
 
