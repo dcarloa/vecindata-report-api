@@ -1,5 +1,5 @@
-import anthropic
 import httpx
+from google import genai
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
@@ -64,7 +64,7 @@ def create_report(request: ReportRequest) -> Response:
         poi_provider=OverpassPOIProvider(cache=_cache),
         routing_provider=OpenRouteServiceRouting(api_key=settings.openrouteservice_api_key, cache=_cache),
         staticmap_provider=MapboxStaticMapProvider(access_token=settings.mapbox_access_token),
-        narrative_generator=NarrativeGenerator(client=anthropic.Anthropic(api_key=settings.anthropic_api_key)),
+        narrative_generator=NarrativeGenerator(client=genai.Client(api_key=settings.google_api_key)),
     )
     report["logo_url"] = request.logo_url
     report["brand_color"] = request.brand_color

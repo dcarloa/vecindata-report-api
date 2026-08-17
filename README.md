@@ -46,7 +46,7 @@ plantilla completa:
 
 | Variable | Requerida | Descripción |
 | --- | --- | --- |
-| `ANTHROPIC_API_KEY` | Sí | Genera el resumen narrativo. |
+| `GOOGLE_API_KEY` | Sí | Genera el resumen narrativo (Gemini, vía Google GenAI API). |
 | `MAPBOX_ACCESS_TOKEN` | Sí | Mapa estático e imagen satelital. |
 | `OPENROUTESERVICE_API_KEY` | Sí | Isócronas a pie. |
 | `PROVIDER_MODE` | No (`free`) | `free` usa proveedores gratuitos (Nominatim). `paid` es solo un punto de extensión documentado y **no** es un modo utilizable. |

@@ -1,27 +1,22 @@
 from app.narrative.narrative import NarrativeGenerator, verify_groundedness
 
 
-class _FakeContentBlock:
+class _FakeResponse:
     def __init__(self, text):
         self.text = text
 
 
-class _FakeMessage:
-    def __init__(self, text):
-        self.content = [_FakeContentBlock(text)]
-
-
-class FakeAnthropicClient:
+class FakeGenaiClient:
     def __init__(self, response_text: str):
         self._response_text = response_text
-        self.messages = self
+        self.models = self
 
-    def create(self, **kwargs):
-        return _FakeMessage(self._response_text)
+    def generate_content(self, **kwargs):
+        return _FakeResponse(self._response_text)
 
 
 def test_generate_returns_text_from_client_response():
-    fake_client = FakeAnthropicClient("Esta zona cuenta con buena conectividad.")
+    fake_client = FakeGenaiClient("Esta zona cuenta con buena conectividad.")
     generator = NarrativeGenerator(client=fake_client)
     result = generator.generate({"pois": {}})
     assert result == "Esta zona cuenta con buena conectividad."
@@ -73,16 +68,17 @@ def test_generate_sends_grounding_instruction_in_system_prompt():
 
     class CapturingClient:
         def __init__(self):
-            self.messages = self
+            self.models = self
 
-        def create(self, **kwargs):
+        def generate_content(self, **kwargs):
             captured.update(kwargs)
-            return _FakeMessage("Texto de prueba.")
+            return _FakeResponse("Texto de prueba.")
 
     generator = NarrativeGenerator(client=CapturingClient())
     generator.generate({"pois": {}})
-    assert "EXCLUSIVAMENTE" in captured["system"]
-    assert "no inventes" in captured["system"].lower()
+    system_instruction = captured["config"].system_instruction
+    assert "EXCLUSIVAMENTE" in system_instruction
+    assert "no inventes" in system_instruction.lower()
 
 
 def test_verify_groundedness_does_not_leak_fabrication_across_clauses():

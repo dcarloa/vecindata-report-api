@@ -2,6 +2,8 @@ import json
 import re
 import unicodedata
 
+from google.genai import types
+
 _SYSTEM_PROMPT = (
     "Eres un redactor inmobiliario. Describe la zona de una propiedad en 1-2 párrafos, "
     "en español, usando EXCLUSIVAMENTE los datos estructurados proporcionados. "
@@ -13,18 +15,20 @@ _SYSTEM_PROMPT = (
 
 
 class NarrativeGenerator:
-    def __init__(self, client, model: str = "claude-haiku-4-5-20251001"):
+    def __init__(self, client, model: str = "gemini-2.5-flash"):
         self._client = client
         self._model = model
 
     def generate(self, report_data: dict) -> str:
-        message = self._client.messages.create(
+        response = self._client.models.generate_content(
             model=self._model,
-            max_tokens=400,
-            system=_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": json.dumps(report_data, ensure_ascii=False)}],
+            contents=json.dumps(report_data, ensure_ascii=False),
+            config=types.GenerateContentConfig(
+                system_instruction=_SYSTEM_PROMPT,
+                max_output_tokens=400,
+            ),
         )
-        return message.content[0].text
+        return response.text
 
 
 def _normalize(text: str) -> str:

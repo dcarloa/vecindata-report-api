@@ -12,7 +12,7 @@ class Settings(BaseSettings):
 
     provider_mode: ProviderMode = ProviderMode.FREE
     cache_dir: str = ".cache"
-    anthropic_api_key: str = ""
+    google_api_key: str = ""
     mapbox_access_token: str = ""
     openrouteservice_api_key: str = ""
 
