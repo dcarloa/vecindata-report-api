@@ -17,6 +17,19 @@ El último paso es obligatorio: el renderizador de PDF usa Playwright con
 Chromium headless, y `pip install` **no** descarga el navegador. Sin él,
 `render_pdf` falla en tiempo de ejecución.
 
+## Docker (para despliegue)
+
+Este repo incluye un `Dockerfile` para desplegarlo en Google Cloud Run — ver la
+sección "Despliegue" más abajo para el proceso completo. Si quieres probar la
+imagen localmente antes de desplegar (necesitas Docker instalado):
+
+```bash
+docker build -t vecindata-report-api-test .
+docker run --rm -p 8080:8080 -e PORT=8080 vecindata-report-api-test
+```
+
+Luego `curl http://localhost:8080/health` debería responder `{"status":"ok"}`.
+
 ## Tests
 
 ```bash
