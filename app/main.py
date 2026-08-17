@@ -1,6 +1,7 @@
 import anthropic
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, Field
 
@@ -15,6 +16,13 @@ from app.report_data.full_orchestrator import build_full_report
 from app.pdf_renderer.renderer import render_pdf
 
 app = FastAPI(title="VecinData Report API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_methods=["POST"],
+    allow_headers=["Content-Type"],
+)
 
 _cache = Cache(settings.cache_dir)
 

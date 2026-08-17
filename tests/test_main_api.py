@@ -87,3 +87,28 @@ def test_create_report_rejects_malformed_brand_color(mock_build, mock_render):
     assert response.status_code == 422
     mock_build.assert_not_called()
     mock_render.assert_not_called()
+
+
+def test_cors_preflight_allows_localhost_dev_origin():
+    response = client.options(
+        "/reports",
+        headers={
+            "Origin": "http://localhost:5173",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "Content-Type",
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
+
+
+def test_cors_rejects_unlisted_origin():
+    response = client.options(
+        "/reports",
+        headers={
+            "Origin": "https://evil.example.com",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "Content-Type",
+        },
+    )
+    assert "access-control-allow-origin" not in response.headers
