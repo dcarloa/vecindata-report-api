@@ -15,8 +15,10 @@ def render_pdf(report: dict) -> bytes:
     html = render_html(report)
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page()
-        page.set_content(html)
-        pdf_bytes = page.pdf(format="A4")
-        browser.close()
+        try:
+            page = browser.new_page()
+            page.set_content(html)
+            pdf_bytes = page.pdf(format="A4")
+        finally:
+            browser.close()
     return pdf_bytes
