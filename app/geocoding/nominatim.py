@@ -12,7 +12,7 @@ class NominatimGeocoder:
         cache: Cache | None = None,
         user_agent: str = "vecindata-report-api/0.1",
     ):
-        self._client = client or httpx.Client(headers={"User-Agent": user_agent})
+        self._client = client or httpx.Client(headers={"User-Agent": user_agent}, timeout=30.0)
         self._cache = cache
 
     def geocode(self, address: str) -> Coordinates:

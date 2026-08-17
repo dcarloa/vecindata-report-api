@@ -16,7 +16,10 @@ class Cache:
         path = self._path_for(key)
         if not path.exists():
             return None
-        return json.loads(path.read_text())
+        try:
+            return json.loads(path.read_text())
+        except json.JSONDecodeError:
+            return None
 
     def set(self, key: str, value: dict) -> None:
         self._path_for(key).write_text(json.dumps(value))

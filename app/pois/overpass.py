@@ -25,18 +25,19 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 2 * r * math.asin(math.sqrt(a))
 
 
-def _get_lat(element: dict) -> float:
-    """Extract latitude from node (direct) or way/relation (from center) element."""
-    if "lat" in element:
-        return element["lat"]
-    return element["center"]["lat"]
-
-
-def _get_lon(element: dict) -> float:
-    """Extract longitude from node (direct) or way/relation (from center) element."""
-    if "lon" in element:
-        return element["lon"]
-    return element["center"]["lon"]
+def _get_coords(element: dict) -> tuple[float, float] | None:
+    """
+    Extract (lat, lon) from a node (direct lat/lon) or a way/relation (from
+    "center"). Returns None if the element has no usable coordinates —
+    way/relation elements occasionally come back from Overpass without a
+    "center" object, and those are skipped rather than raising.
+    """
+    if "lat" in element and "lon" in element:
+        return element["lat"], element["lon"]
+    center = element.get("center")
+    if isinstance(center, dict) and "lat" in center and "lon" in center:
+        return center["lat"], center["lon"]
+    return None
 
 
 class OverpassPOIProvider:
@@ -61,16 +62,20 @@ class OverpassPOIProvider:
         response.raise_for_status()
         elements = response.json().get("elements", [])
 
+        elements_with_coords = (
+            (el, _get_coords(el)) for el in elements
+        )
         pois = sorted(
             (
                 POI(
                     name=el.get("tags", {}).get("name", "Sin nombre"),
                     category=category,
-                    lat=_get_lat(el),
-                    lon=_get_lon(el),
-                    distance_m=_haversine_m(lat, lon, _get_lat(el), _get_lon(el)),
+                    lat=coords[0],
+                    lon=coords[1],
+                    distance_m=_haversine_m(lat, lon, coords[0], coords[1]),
                 )
-                for el in elements
+                for el, coords in elements_with_coords
+                if coords is not None
             ),
             key=lambda p: p.distance_m,
         )

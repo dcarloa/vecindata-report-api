@@ -1,6 +1,7 @@
 import anthropic
-from fastapi import FastAPI
-from fastapi.responses import Response
+import httpx
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from app.config import settings
@@ -20,6 +21,19 @@ _cache = Cache(settings.cache_dir)
 
 class ReportRequest(BaseModel):
     address: str
+
+
+@app.exception_handler(ValueError)
+async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
+
+
+@app.exception_handler(httpx.HTTPError)
+async def http_error_handler(request: Request, exc: httpx.HTTPError) -> JSONResponse:
+    return JSONResponse(
+        status_code=502,
+        content={"detail": "Error al consultar un proveedor de datos externo."},
+    )
 
 
 @app.get("/health")

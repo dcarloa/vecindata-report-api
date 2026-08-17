@@ -25,7 +25,7 @@ class OpenRouteServiceRouting:
         )
         response.raise_for_status()
         features = response.json()["features"]
-        result = [Isochrone(minutes=minutes[i], geojson=feature) for i, feature in enumerate(features)]
+        result = [Isochrone(minutes=m, geojson=feature) for m, feature in zip(minutes, features)]
 
         if self._cache:
             self._cache.set(cache_key, [iso.model_dump() for iso in result])

@@ -8,7 +8,7 @@ class ProviderMode(str, Enum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     provider_mode: ProviderMode = ProviderMode.FREE
     cache_dir: str = ".cache"

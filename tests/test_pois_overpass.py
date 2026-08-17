@@ -77,3 +77,29 @@ def test_find_pois_handles_way_elements_with_center_coordinates():
     parque = next(poi for poi in pois if poi.name == "Parque Central")
     assert abs(parque.lat - 4.6105) < 0.0001
     assert abs(parque.lon - (-74.0819)) < 0.0001
+
+
+@respx.mock
+def test_find_pois_skips_elements_without_usable_coordinates():
+    """Regression test: way/relation elements occasionally come back without a
+    'center' object; those must be skipped, not raise KeyError."""
+    respx.post(OVERPASS_URL).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "elements": [
+                    {"lat": 4.611, "lon": -74.082, "tags": {"name": "Parque Válido"}},
+                    # way with no center at all
+                    {"type": "way", "id": 1, "tags": {"name": "Sin Centro"}},
+                    # relation with a malformed center
+                    {"type": "relation", "id": 2, "center": {}, "tags": {"name": "Centro Vacío"}},
+                ]
+            },
+        )
+    )
+    provider = OverpassPOIProvider(client=httpx.Client())
+    pois = provider.find_pois(
+        lat=4.6097, lon=-74.0817, category=Categoria.PARQUES, radius_m=1000
+    )
+
+    assert [poi.name for poi in pois] == ["Parque Válido"]
