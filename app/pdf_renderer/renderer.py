@@ -6,7 +6,7 @@ _TEMPLATE_DIR = Path(__file__).parent / "templates"
 
 
 def render_html(report: dict) -> str:
-    env = Environment(loader=FileSystemLoader(_TEMPLATE_DIR))
+    env = Environment(loader=FileSystemLoader(_TEMPLATE_DIR), autoescape=True)
     template = env.get_template("report.html.jinja")
     return template.render(**report)
 

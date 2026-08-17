@@ -44,8 +44,13 @@ def build_full_report(
     score = calculate_scores(report)
     report["score"] = score.model_dump()
 
-    narrative = narrative_generator.generate(report)
-    if not verify_groundedness(narrative, report):
+    narrative_payload = {
+        "address": report["address"],
+        "pois": report["pois"],
+        "score": report["score"],
+    }
+    narrative = narrative_generator.generate(narrative_payload)
+    if not verify_groundedness(narrative, narrative_payload):
         narrative = (
             "Resumen no disponible: no se pudo verificar que la descripción generada "
             "se basara únicamente en los datos recolectados."

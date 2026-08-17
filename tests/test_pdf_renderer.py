@@ -5,7 +5,12 @@ _SAMPLE_REPORT = {
     "address": "Calle 100 # 15-20, Bogotá",
     "map_url": "https://example.com/map.png",
     "satellite_url": "https://example.com/sat.png",
-    "pois": {"educacion": [{"name": "Colegio X"}], "salud": []},
+    "pois": {
+        "educacion": [
+            {"name": "Colegio X", "category": "educacion", "lat": 4.61, "lon": -74.08, "distance_m": 137.4}
+        ],
+        "salud": [],
+    },
     "isochrones": [{"minutes": 5, "geojson": {}}, {"minutes": 10, "geojson": {}}],
     "score": {
         "global_score": 8.5,
@@ -20,6 +25,22 @@ def test_render_html_includes_address_narrative_and_isochrones():
     assert "Calle 100 # 15-20, Bogotá" in html
     assert "Zona bien conectada" in html
     assert "10 min caminando" in html
+
+
+def test_render_html_includes_count_and_distance_to_nearest_poi():
+    html = render_html(_SAMPLE_REPORT)
+    assert "educacion: 1 encontrados (el más cercano a 137 m)" in html
+    # Categories with no results show the count only, with no distance clause.
+    assert "salud: 0 encontrados</li>" in html
+
+
+def test_render_html_escapes_user_controlled_input():
+    """Regression test: unescaped input would execute inside the headless Chromium
+    instance that render_pdf loads the HTML into."""
+    report = {**_SAMPLE_REPORT, "address": "<script>alert(1)</script>Calle 100"}
+    html = render_html(report)
+    assert "&lt;script&gt;" in html
+    assert "<script>" not in html
 
 
 def test_render_pdf_produces_valid_pdf_bytes():

@@ -1,3 +1,4 @@
+import json
 import re
 import unicodedata
 
@@ -21,7 +22,7 @@ class NarrativeGenerator:
             model=self._model,
             max_tokens=400,
             system=_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": str(report_data)}],
+            messages=[{"role": "user", "content": json.dumps(report_data, ensure_ascii=False)}],
         )
         return message.content[0].text
 

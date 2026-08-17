@@ -21,10 +21,10 @@ class FakeRoutingProvider:
 
 class FakeStaticMapProvider:
     def map_url(self, lat, lon, **kwargs):
-        return "https://example.com/map.png"
+        return "https://example.com/map.png?access_token=SECRET_TOKEN"
 
     def satellite_url(self, lat, lon, **kwargs):
-        return "https://example.com/sat.png"
+        return "https://example.com/sat.png?access_token=SECRET_TOKEN"
 
 
 class FakeNarrativeGenerator:
@@ -61,3 +61,27 @@ def test_build_full_report_replaces_ungrounded_narrative():
         narrative_generator=UngroundedNarrativeGenerator(),
     )
     assert "no se pudo verificar" in report["narrative"]
+
+
+def test_narrative_payload_excludes_map_tokens_and_isochrone_geojson():
+    """Regression test: the payload sent to the LLM must not carry the Mapbox
+    access token (embedded in the map URLs) nor the bulky, unused isochrone
+    GeoJSON — only what the narrative prompt actually describes."""
+    captured = {}
+
+    class CapturingNarrativeGenerator:
+        def generate(self, report_data):
+            captured.update(report_data)
+            return "La zona cuenta con un parque cercano."
+
+    build_full_report(
+        address="Calle 100 # 15-20, Bogotá",
+        geocoder=FakeGeocoder(),
+        poi_provider=FakePOIProvider(),
+        routing_provider=FakeRoutingProvider(),
+        staticmap_provider=FakeStaticMapProvider(),
+        narrative_generator=CapturingNarrativeGenerator(),
+    )
+
+    assert set(captured) == {"address", "pois", "score"}
+    assert "SECRET_TOKEN" not in str(captured)
