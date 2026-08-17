@@ -64,7 +64,9 @@ def create_report(request: ReportRequest) -> Response:
         poi_provider=OverpassPOIProvider(cache=_cache),
         routing_provider=OpenRouteServiceRouting(api_key=settings.openrouteservice_api_key, cache=_cache),
         staticmap_provider=MapboxStaticMapProvider(access_token=settings.mapbox_access_token),
-        narrative_generator=NarrativeGenerator(client=genai.Client(api_key=settings.google_api_key)),
+        narrative_generator=NarrativeGenerator(
+            client=genai.Client(vertexai=True, api_key=settings.google_api_key)
+        ),
     )
     report["logo_url"] = request.logo_url
     report["brand_color"] = request.brand_color

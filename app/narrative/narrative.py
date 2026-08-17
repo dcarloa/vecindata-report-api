@@ -26,6 +26,13 @@ class NarrativeGenerator:
             config=types.GenerateContentConfig(
                 system_instruction=_SYSTEM_PROMPT,
                 max_output_tokens=400,
+                # gemini-2.5-flash reasons internally by default, and that
+                # reasoning consumes max_output_tokens before any visible
+                # text is written — with the budget above, the response was
+                # silently truncated (finish_reason=MAX_TOKENS) after ~15
+                # tokens of real output. Disabled since this task needs no
+                # chain-of-thought, only the final 1-2 paragraphs.
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
             ),
         )
         return response.text

@@ -81,6 +81,27 @@ def test_generate_sends_grounding_instruction_in_system_prompt():
     assert "no inventes" in system_instruction.lower()
 
 
+def test_generate_disables_thinking_budget():
+    # gemini-2.5-flash reasons internally by default, and that reasoning
+    # consumes max_output_tokens before any visible text is written — this
+    # silently truncated real responses (finish_reason=MAX_TOKENS) in manual
+    # testing against the live API. Locking in thinking_budget=0 so this
+    # doesn't regress.
+    captured = {}
+
+    class CapturingClient:
+        def __init__(self):
+            self.models = self
+
+        def generate_content(self, **kwargs):
+            captured.update(kwargs)
+            return _FakeResponse("Texto de prueba.")
+
+    generator = NarrativeGenerator(client=CapturingClient())
+    generator.generate({"pois": {}})
+    assert captured["config"].thinking_config.thinking_budget == 0
+
+
 def test_verify_groundedness_does_not_leak_fabrication_across_clauses():
     report_data = {"pois": {"salud": [], "bancos": []}}
     text = "No hay bancos, pero hay clinicas modernas."
