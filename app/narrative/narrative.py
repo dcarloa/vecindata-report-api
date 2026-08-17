@@ -44,7 +44,7 @@ _CATEGORY_KEYWORDS = {
         "transporte", "transporte publico", "parada", "paradas",
         "estacion de transporte", "estaciones de transporte",
         "estacion de metro", "estaciones de metro", "estacion del metro", "estaciones del metro",
-        "linea de metro", "transmilenio",
+        "linea de metro", "lineas de metro", "paradero", "paraderos", "transmilenio",
     ],
     "comercio": [
         "supermercado", "supermercados", "centro comercial", "centros comerciales", "comercio", "comercios",
@@ -58,9 +58,11 @@ _CATEGORY_KEYWORDS = {
 }
 
 _PRICE_KEYWORDS = [
-    "precio", "precios", "valor", "valorizacion", "valorizaciones", "valoriza", "valorizar",
-    "avaluo", "avaluos", "costo", "millon", "millones", "cotiza", "cotizacion",
-    "arriendo", "canon", "pesos", "cop", "uvr", "smmlv",
+    "precio", "precios", "valor", "valores", "valorizacion", "valorizaciones",
+    "valoriza", "valorizar", "valorizado", "valorizados",
+    "avaluo", "avaluos", "costo", "costos", "millon", "millones",
+    "cotiza", "cotizacion", "cotizaciones", "arriendo", "arriendos",
+    "canon", "canones", "pesos", "cop", "uvr", "smmlv",
 ]
 
 _PRICE_SYMBOLS = ["$", "%", "m2"]

@@ -119,3 +119,30 @@ def test_verify_groundedness_price_keyword_respects_word_boundary():
     report_data = {"pois": {}}
     text = "Es un barrio de gran aprecio entre las familias."
     assert verify_groundedness(text, report_data) is True
+
+
+def test_verify_groundedness_catches_price_plural_forms():
+    """Regression test: plural and inflected forms of price keywords must be caught."""
+    report_data = {"pois": {}}
+
+    # Plural of "costo"
+    assert verify_groundedness("Los costos de vivienda en el sector son moderados.", report_data) is False
+
+    # Plural of "arriendo"
+    assert verify_groundedness("Los arriendos en el sector son elevados.", report_data) is False
+
+    # Plural of "cotizacion"
+    assert verify_groundedness("Las cotizaciones del sector suben cada año.", report_data) is False
+
+    # Plural of "valor"
+    assert verify_groundedness("Los valores del sector se han disparado.", report_data) is False
+
+    # Plural of "canon"
+    assert verify_groundedness("Los cánones de arrendamiento rondan cifras altas.", report_data) is False
+
+
+def test_verify_groundedness_catches_paradero_fabrication():
+    """Regression test: 'paradero' (Colombian bus stop term) should be caught."""
+    report_data = {"pois": {"transporte": []}}
+    text = "Hay un paradero de buses a media cuadra."
+    assert verify_groundedness(text, report_data) is False
