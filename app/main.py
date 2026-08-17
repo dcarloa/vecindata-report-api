@@ -21,6 +21,8 @@ _cache = Cache(settings.cache_dir)
 
 class ReportRequest(BaseModel):
     address: str
+    logo_url: str | None = None
+    brand_color: str | None = None
 
 
 @app.exception_handler(ValueError)
@@ -51,5 +53,7 @@ def create_report(request: ReportRequest) -> Response:
         staticmap_provider=MapboxStaticMapProvider(access_token=settings.mapbox_access_token),
         narrative_generator=NarrativeGenerator(client=anthropic.Anthropic(api_key=settings.anthropic_api_key)),
     )
+    report["logo_url"] = request.logo_url
+    report["brand_color"] = request.brand_color
     pdf_bytes = render_pdf(report)
     return Response(content=pdf_bytes, media_type="application/pdf")

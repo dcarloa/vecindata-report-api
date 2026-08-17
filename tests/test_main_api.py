@@ -41,3 +41,28 @@ def test_upstream_provider_failure_returns_502(mock_build):
     response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
     assert response.status_code == 502
     assert "proveedor de datos externo" in response.json()["detail"]
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+def test_create_report_passes_branding_fields_into_report_dict(mock_build, mock_render):
+    client.post(
+        "/reports",
+        json={
+            "address": "Calle 100, Bogotá",
+            "logo_url": "https://example.com/logo.png",
+            "brand_color": "#1a73e8",
+        },
+    )
+    rendered_report = mock_render.call_args[0][0]
+    assert rendered_report["logo_url"] == "https://example.com/logo.png"
+    assert rendered_report["brand_color"] == "#1a73e8"
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+def test_create_report_branding_fields_default_to_none(mock_build, mock_render):
+    client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    rendered_report = mock_render.call_args[0][0]
+    assert rendered_report["logo_url"] is None
+    assert rendered_report["brand_color"] is None

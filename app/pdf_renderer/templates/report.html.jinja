@@ -3,8 +3,12 @@
 <head>
   <meta charset="utf-8">
   <title>Reporte de ubicación</title>
+  <style>
+    h1 { color: {{ brand_color | default('#1a1a1a', true) }}; }
+  </style>
 </head>
 <body>
+  {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" class="brand-logo">{% endif %}
   <h1>{{ address }}</h1>
   <img src="{{ map_url }}" alt="Mapa">
   <img src="{{ satellite_url }}" alt="Imagen satelital">

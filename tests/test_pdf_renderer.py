@@ -79,3 +79,16 @@ def test_render_pdf_closes_browser_even_on_pdf_failure():
             assert str(e) == "Simulated PDF generation failure"
             # Verify browser.close() was called despite the exception
             mock_browser.close.assert_called_once()
+
+
+def test_render_html_shows_logo_when_provided():
+    report = {**_SAMPLE_REPORT, "logo_url": "https://example.com/logo.png", "brand_color": "#1a73e8"}
+    html = render_html(report)
+    assert '<img src="https://example.com/logo.png"' in html
+    assert "#1a73e8" in html
+
+
+def test_render_html_omits_logo_when_not_provided():
+    report = {**_SAMPLE_REPORT, "logo_url": None, "brand_color": None}
+    html = render_html(report)
+    assert "<img" not in html.split("<h1>")[0]
