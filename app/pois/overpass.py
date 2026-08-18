@@ -41,8 +41,15 @@ def _get_coords(element: dict) -> tuple[float, float] | None:
 
 
 class OverpassPOIProvider:
-    def __init__(self, client: httpx.Client | None = None, cache: Cache | None = None):
-        self._client = client or httpx.Client(timeout=30.0)
+    def __init__(
+        self,
+        client: httpx.Client | None = None,
+        cache: Cache | None = None,
+        user_agent: str = "vecindata-report-api/0.1",
+    ):
+        self._client = client or httpx.Client(
+            timeout=30.0, headers={"User-Agent": user_agent, "Accept": "*/*"}
+        )
         self._cache = cache
 
     def find_pois(self, lat: float, lon: float, category: Categoria, radius_m: int) -> list[POI]:

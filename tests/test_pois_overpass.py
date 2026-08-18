@@ -5,6 +5,27 @@ from app.pois.overpass import OverpassPOIProvider, OVERPASS_URL
 
 
 @respx.mock
+def test_default_client_sends_a_user_agent_overpass_will_accept():
+    # Overpass's Apache front-end returns a bare 406 (rejected before ever
+    # reaching the Overpass app) for requests with no User-Agent — httpx's
+    # default "python-httpx/x.x" triggers this every time. That 406 was
+    # being silently swallowed by the graceful-degradation except clause
+    # below, so every single report showed 0 POIs in every category,
+    # regardless of the address. A real User-Agent must be sent by default,
+    # the same way NominatimGeocoder already does.
+    route = respx.post(OVERPASS_URL).mock(
+        return_value=httpx.Response(200, json={"elements": []})
+    )
+    provider = OverpassPOIProvider()
+
+    provider.find_pois(lat=4.6097, lon=-74.0817, category=Categoria.EDUCACION, radius_m=1000)
+
+    sent_request = route.calls.last.request
+    assert "user-agent" in sent_request.headers
+    assert "python-httpx" not in sent_request.headers["user-agent"].lower()
+
+
+@respx.mock
 def test_find_pois_returns_sorted_by_distance():
     respx.post(OVERPASS_URL).mock(
         return_value=httpx.Response(
