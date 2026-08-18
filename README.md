@@ -25,8 +25,11 @@ imagen localmente antes de desplegar (necesitas Docker instalado):
 
 ```bash
 docker build -t vecindata-report-api-test .
-docker run --rm -p 8080:8080 -e PORT=8080 vecindata-report-api-test
+docker run --rm -p 8080:8080 -e PORT=8080 --env-file .env vecindata-report-api-test
 ```
+
+(esto pasa tus keys reales de `.env` al contenedor — solo para pruebas
+locales, nunca las metas al `Dockerfile` ni a la imagen)
 
 Luego `curl http://localhost:8080/health` debería responder `{"status":"ok"}`.
 
@@ -64,6 +67,7 @@ plantilla completa:
 | `OPENROUTESERVICE_API_KEY` | Sí | Isócronas a pie. |
 | `PROVIDER_MODE` | No (`free`) | `free` usa proveedores gratuitos (Nominatim). `paid` es solo un punto de extensión documentado y **no** es un modo utilizable. |
 | `CACHE_DIR` | No (`.cache`) | Directorio de caché en disco para respuestas de proveedores. |
+| `OPERATOR_ACCESS_KEY` | No (`""`) | Clave compartida que protege `POST /reports`. Si está vacía (el default), el endpoint queda **sin protección** — cualquiera con la URL puede generar reportes. En producción, configúrala con un valor largo y avísale al operador cuál es (la misma clave que se pide en el panel operador de `vecindata-web`). |
 
 Geocodificación (Nominatim) y puntos de interés (Overpass) no requieren
 credenciales.
@@ -79,8 +83,10 @@ límites, pero Google pide una tarjeta vinculada al proyecto).
 
    ```bash
    gcloud auth login
-   gcloud config set project vecindata
+   gcloud config set project tu-project-id
    ```
+
+   (usa `gcloud projects list` para ver los proyectos disponibles en tu cuenta)
 
 3. Despliega (un solo comando — construye la imagen desde el `Dockerfile` vía
    Cloud Build y la publica):
@@ -90,15 +96,26 @@ límites, pero Google pide una tarjeta vinculada al proyecto).
      --source . \
      --region us-central1 \
      --allow-unauthenticated \
+     --memory 2Gi \
+     --cpu 2 \
      --set-env-vars GOOGLE_API_KEY=tu-key,MAPBOX_ACCESS_TOKEN=tu-token,OPENROUTESERVICE_API_KEY=tu-key,OPERATOR_ACCESS_KEY=una-clave-larga-que-tu-eliges,PROVIDER_MODE=free
    ```
+
+   `--memory 2Gi --cpu 2`: el default de Cloud Run (512 MiB) no alcanza para
+   lanzar Chromium headless por cada reporte — con el default, el servicio se
+   queda sin memoria y el operador ve un 500 sin pista de la causa real.
+
+   Nota: si alguna de tus API keys contiene una coma, el flag `--set-env-vars`
+   la va a cortar ahí — en ese caso usa el formato
+   `--set-env-vars "^##^K1=v1##K2=v2"` (delimitador alternativo) en vez de
+   comas.
 
    Al terminar, imprime la URL del servicio (algo como
    `https://vecindata-report-api-xxxxx-uc.a.run.app`) — **guárdala**, la
    necesitas para configurar `vecindata-web`.
 
 4. Actualiza `app/main.py`'s `allow_origins` en `CORSMiddleware` para incluir el
-   dominio real de Cloudflare Pages una vez que lo tengas (paso 3 de
+   dominio real de Cloudflare Pages una vez que lo tengas (paso 5 de
    `vecindata-web` abajo), y vuelve a correr el comando del paso 3 para
    redesplegar con el CORS correcto.
 

@@ -21,8 +21,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
     allow_methods=["POST"],
-    allow_headers=["Content-Type"],
+    allow_headers=["Content-Type", "X-Operator-Key"],
 )
+
+if not settings.operator_access_key:
+    print("WARNING: OPERATOR_ACCESS_KEY is not set — POST /reports is publicly accessible with no access control.")
 
 _cache = Cache(settings.cache_dir)
 

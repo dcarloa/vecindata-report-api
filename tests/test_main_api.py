@@ -1,11 +1,17 @@
 from unittest.mock import patch
 
 import httpx
+import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.config import settings
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _disable_access_key_gate(monkeypatch):
+    monkeypatch.setattr(settings, "operator_access_key", "")
 
 
 def test_health_check_returns_ok():
@@ -114,7 +120,7 @@ def test_cors_preflight_allows_localhost_dev_origin():
         headers={
             "Origin": "http://localhost:5173",
             "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "Content-Type",
+            "Access-Control-Request-Headers": "Content-Type, X-Operator-Key",
         },
     )
     assert response.status_code == 200
