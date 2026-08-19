@@ -1,10 +1,9 @@
-from app.geocoding.base import Geocoder
 from app.pois.base import POIProvider
 from app.routing.base import RoutingProvider
 from app.staticmap.base import StaticMapProvider
 from app.scoring.scoring import calculate_scores
 from app.narrative.narrative import NarrativeGenerator, verify_groundedness
-from app.models import Categoria
+from app.models import Categoria, Coordinates
 
 _ALL_CATEGORIES = list(Categoria)
 _ISOCHRONE_MINUTES = [5, 10, 15]
@@ -13,14 +12,12 @@ _POI_RADIUS_M = 1000
 
 def build_full_report(
     address: str,
-    geocoder: Geocoder,
+    coords: Coordinates,
     poi_provider: POIProvider,
     routing_provider: RoutingProvider,
     staticmap_provider: StaticMapProvider,
     narrative_generator: NarrativeGenerator,
 ) -> dict:
-    coords = geocoder.geocode(address)
-
     pois = {
         category.value: [
             poi.model_dump() for poi in poi_provider.find_pois(coords.lat, coords.lon, category, _POI_RADIUS_M)

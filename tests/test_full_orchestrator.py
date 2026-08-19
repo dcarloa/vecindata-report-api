@@ -1,10 +1,7 @@
 from app.models import Coordinates, POI, Isochrone, Categoria
 from app.report_data.full_orchestrator import build_full_report
 
-
-class FakeGeocoder:
-    def geocode(self, address):
-        return Coordinates(lat=4.6097, lon=-74.0817)
+FAKE_COORDS = Coordinates(lat=4.6097, lon=-74.0817)
 
 
 class FakePOIProvider:
@@ -35,7 +32,7 @@ class FakeNarrativeGenerator:
 def test_build_full_report_includes_all_sections():
     report = build_full_report(
         address="Calle 100 # 15-20, Bogotá",
-        geocoder=FakeGeocoder(),
+        coords=FAKE_COORDS,
         poi_provider=FakePOIProvider(),
         routing_provider=FakeRoutingProvider(),
         staticmap_provider=FakeStaticMapProvider(),
@@ -54,7 +51,7 @@ def test_build_full_report_replaces_ungrounded_narrative():
 
     report = build_full_report(
         address="Calle 100 # 15-20, Bogotá",
-        geocoder=FakeGeocoder(),
+        coords=FAKE_COORDS,
         poi_provider=FakePOIProvider(),
         routing_provider=FakeRoutingProvider(),
         staticmap_provider=FakeStaticMapProvider(),
@@ -76,7 +73,7 @@ def test_narrative_payload_excludes_map_tokens_and_isochrone_geojson():
 
     build_full_report(
         address="Calle 100 # 15-20, Bogotá",
-        geocoder=FakeGeocoder(),
+        coords=FAKE_COORDS,
         poi_provider=FakePOIProvider(),
         routing_provider=FakeRoutingProvider(),
         staticmap_provider=FakeStaticMapProvider(),

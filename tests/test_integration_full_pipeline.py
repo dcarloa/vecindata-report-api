@@ -13,7 +13,7 @@ the template and Playwright are all real.
 from app.pdf_renderer.renderer import render_html, render_pdf
 from app.report_data.full_orchestrator import build_full_report
 from tests.test_full_orchestrator import (
-    FakeGeocoder,
+    FAKE_COORDS,
     FakeNarrativeGenerator,
     FakePOIProvider,
     FakeRoutingProvider,
@@ -35,7 +35,7 @@ _ALL_CATEGORIES = [
 def _build_report() -> dict:
     return build_full_report(
         address=_ADDRESS,
-        geocoder=FakeGeocoder(),
+        coords=FAKE_COORDS,
         poi_provider=FakePOIProvider(),
         routing_provider=FakeRoutingProvider(),
         staticmap_provider=FakeStaticMapProvider(),

@@ -21,9 +21,9 @@ def test_health_check_returns_ok():
 
 
 @patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
-@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
 def test_create_report_returns_pdf_response(mock_build, mock_render):
-    response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    response = client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert response.content == b"%PDF-fake-bytes"
@@ -36,16 +36,25 @@ def test_create_report_returns_pdf_response(mock_build, mock_render):
     side_effect=ValueError("No se encontraron coordenadas para la dirección: xyz"),
 )
 def test_address_not_found_returns_422_not_500(mock_build):
-    """'Address not found' is the most likely real user error and must surface as a
-    client error with a usable message, not an opaque 500."""
-    response = client.post("/reports", json={"address": "xyz"})
+    """A ValueError raised anywhere in report building must surface as a client
+    error with a usable message, not an opaque 500."""
+    response = client.post("/reports", json={"address": "xyz", "lat": 4.6097, "lon": -74.0817})
     assert response.status_code == 422
     assert "No se encontraron coordenadas" in response.json()["detail"]
 
 
+@patch("app.main.build_full_report")
+def test_missing_coordinates_returns_422_without_calling_build_full_report(mock_build):
+    """The frontend now resolves coordinates via Google Places before submitting —
+    lat/lon are required so the endpoint never falls back to guessing them."""
+    response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    assert response.status_code == 422
+    mock_build.assert_not_called()
+
+
 @patch("app.main.build_full_report", side_effect=httpx.ConnectTimeout("timeout"))
 def test_upstream_provider_failure_returns_502(mock_build):
-    response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    response = client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
     assert response.status_code == 502
     assert "proveedor de datos externo" in response.json()["detail"]
 
@@ -60,7 +69,7 @@ def test_unhandled_exception_returns_500_with_cors_headers(mock_build):
     ExceptionMiddleware (inside CORSMiddleware), so the header is actually applied."""
     response = client.post(
         "/reports",
-        json={"address": "Calle 100, Bogotá"},
+        json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817},
         headers={"Origin": "http://localhost:5173"},
     )
     assert response.status_code == 500
@@ -69,12 +78,14 @@ def test_unhandled_exception_returns_500_with_cors_headers(mock_build):
 
 
 @patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
-@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
 def test_create_report_passes_branding_fields_into_report_dict(mock_build, mock_render):
     client.post(
         "/reports",
         json={
             "address": "Calle 100, Bogotá",
+            "lat": 4.6097,
+            "lon": -74.0817,
             "logo_url": "https://example.com/logo.png",
             "brand_color": "#1a73e8",
         },
@@ -85,9 +96,9 @@ def test_create_report_passes_branding_fields_into_report_dict(mock_build, mock_
 
 
 @patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
-@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
 def test_create_report_branding_fields_default_to_none(mock_build, mock_render):
-    client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
     rendered_report = mock_render.call_args[0][0]
     assert rendered_report["logo_url"] is None
     assert rendered_report["brand_color"] is None
@@ -106,6 +117,8 @@ def test_create_report_rejects_malformed_brand_color(mock_build, mock_render):
         "/reports",
         json={
             "address": "Calle 100, Bogotá",
+            "lat": 4.6097,
+            "lon": -74.0817,
             "brand_color": "red; } h1 { background: url(http://evil) } /*",
         },
     )
@@ -142,7 +155,7 @@ def test_cors_rejects_unlisted_origin():
 @patch("app.main.build_full_report")
 def test_missing_access_key_returns_401_without_calling_build_full_report(mock_build, monkeypatch):
     monkeypatch.setattr(settings, "operator_access_key", "secret123")
-    response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    response = client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
     assert response.status_code == 401
     assert response.json()["detail"] == "Clave de acceso inválida."
     mock_build.assert_not_called()
@@ -153,7 +166,7 @@ def test_wrong_access_key_returns_401_without_calling_build_full_report(mock_bui
     monkeypatch.setattr(settings, "operator_access_key", "secret123")
     response = client.post(
         "/reports",
-        json={"address": "Calle 100, Bogotá"},
+        json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817},
         headers={"X-Operator-Key": "wrong-key"},
     )
     assert response.status_code == 401
@@ -161,12 +174,12 @@ def test_wrong_access_key_returns_401_without_calling_build_full_report(mock_bui
 
 
 @patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
-@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
 def test_correct_access_key_allows_the_request_through(mock_build, mock_render, monkeypatch):
     monkeypatch.setattr(settings, "operator_access_key", "secret123")
     response = client.post(
         "/reports",
-        json={"address": "Calle 100, Bogotá"},
+        json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817},
         headers={"X-Operator-Key": "secret123"},
     )
     assert response.status_code == 200
@@ -174,12 +187,12 @@ def test_correct_access_key_allows_the_request_through(mock_build, mock_render, 
 
 
 @patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
-@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá"})
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
 def test_no_access_key_configured_disables_the_gate(mock_build, mock_render, monkeypatch):
     # settings.operator_access_key defaults to "" — the gate must stay disabled
     # so local development and every other existing test (none of which send
     # the header) keep working unchanged.
     monkeypatch.setattr(settings, "operator_access_key", "")
-    response = client.post("/reports", json={"address": "Calle 100, Bogotá"})
+    response = client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
     assert response.status_code == 200
     mock_build.assert_called_once()

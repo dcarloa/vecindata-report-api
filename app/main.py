@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.cache import Cache
-from app.geocoding.factory import get_geocoder
+from app.models import Coordinates
 from app.pois.overpass import OverpassPOIProvider
 from app.routing.openrouteservice import OpenRouteServiceRouting
 from app.staticmap.mapbox import MapboxStaticMapProvider
@@ -36,6 +36,8 @@ _cache = Cache(settings.cache_dir)
 
 class ReportRequest(BaseModel):
     address: str
+    lat: float
+    lon: float
     logo_url: str | None = None
     # Restricted to a strict 6-digit hex color: brand_color is interpolated raw
     # into a <style> block in the PDF template, and Jinja2 autoescaping does not
@@ -70,7 +72,7 @@ def create_report(request: ReportRequest, x_operator_key: str | None = Header(de
     try:
         report = build_full_report(
             address=request.address,
-            geocoder=get_geocoder(settings, cache=_cache),
+            coords=Coordinates(lat=request.lat, lon=request.lon),
             poi_provider=OverpassPOIProvider(cache=_cache),
             routing_provider=OpenRouteServiceRouting(api_key=settings.openrouteservice_api_key, cache=_cache),
             staticmap_provider=MapboxStaticMapProvider(access_token=settings.mapbox_access_token),
