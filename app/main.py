@@ -1,4 +1,5 @@
 import re
+from typing import Literal
 
 import httpx
 from google import genai
@@ -59,6 +60,7 @@ class ReportRequest(BaseModel):
     # inject arbitrary CSS and, since rendering runs a real headless Chromium,
     # trigger SSRF against internal services or cloud metadata endpoints.
     brand_color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    radius_m: Literal[500, 1000, 2000] = 1000
     advisor_name: str | None = None
     advisor_whatsapp: str | None = None
     advisor_email: str | None = None
@@ -97,6 +99,7 @@ def create_report(request: ReportRequest, x_operator_key: str | None = Header(de
             narrative_generator=NarrativeGenerator(
                 client=genai.Client(vertexai=True, api_key=settings.google_api_key)
             ),
+            radius_m=request.radius_m,
         )
         report["logo_url"] = request.logo_url
         report["brand_color"] = request.brand_color

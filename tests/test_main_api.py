@@ -77,6 +77,31 @@ def test_unhandled_exception_returns_500_with_cors_headers(mock_build):
     assert response.headers["access-control-allow-origin"] == "http://localhost:5173"
 
 
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+def test_create_report_passes_radius_m_to_build_full_report(mock_build):
+    client.post(
+        "/reports",
+        json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817, "radius_m": 500},
+    )
+    assert mock_build.call_args.kwargs["radius_m"] == 500
+
+
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+def test_create_report_defaults_radius_m_to_1000(mock_build):
+    client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+    assert mock_build.call_args.kwargs["radius_m"] == 1000
+
+
+@patch("app.main.build_full_report")
+def test_create_report_rejects_invalid_radius_m(mock_build):
+    response = client.post(
+        "/reports",
+        json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817, "radius_m": 750},
+    )
+    assert response.status_code == 422
+    mock_build.assert_not_called()
+
+
 @patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
 @patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
 def test_create_report_passes_branding_fields_into_report_dict(mock_build, mock_render):

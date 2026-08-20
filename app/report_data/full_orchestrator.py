@@ -7,7 +7,6 @@ from app.models import Categoria, Coordinates
 
 _ALL_CATEGORIES = list(Categoria)
 _ISOCHRONE_MINUTES = [5, 10, 15]
-_POI_RADIUS_M = 1000
 
 
 def build_full_report(
@@ -17,10 +16,11 @@ def build_full_report(
     routing_provider: RoutingProvider,
     staticmap_provider: StaticMapProvider,
     narrative_generator: NarrativeGenerator,
+    radius_m: int = 1000,
 ) -> dict:
     pois = {
         category.value: [
-            poi.model_dump() for poi in poi_provider.find_pois(coords.lat, coords.lon, category, _POI_RADIUS_M)
+            poi.model_dump() for poi in poi_provider.find_pois(coords.lat, coords.lon, category, radius_m)
         ]
         for category in _ALL_CATEGORIES
     }
