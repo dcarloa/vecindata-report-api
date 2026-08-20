@@ -1,40 +1,272 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <title>Reporte de ubicación</title>
-  <style>
-    h1 { color: {{ brand_color | default('#1a1a1a', true) }}; }
-  </style>
+<meta charset="utf-8">
+<title>Reporte de ubicación</title>
+<style>
+  :root {
+    --accent: {{ brand_color | default('#b5502e', true) }};
+    --bg: #f6f1e6;
+    --surface: #fffdf8;
+    --text: #241f1a;
+    --text-muted: #6f6255;
+    --border: #e3d8c2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    color: var(--text);
+    background: var(--surface);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 {
+    font-family: Georgia, "Iowan Old Style", serif;
+    margin: 0;
+  }
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .brand-mark { width: 20px; height: 20px; flex-shrink: 0; }
+  .brand-wordmark {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .brand-logo { max-height: 32px; max-width: 140px; }
+  h1 {
+    font-size: 26px;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+  .maps {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .maps img {
+    width: 50%;
+    height: 220px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    object-fit: cover;
+  }
+  .score-section {
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 28px;
+  }
+  .score-global {
+    text-align: center;
+    flex-shrink: 0;
+    width: 90px;
+  }
+  .score-global .value {
+    font-family: Georgia, "Iowan Old Style", serif;
+    font-size: 34px;
+    color: var(--accent);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .score-global .max { font-size: 12px; color: var(--text-muted); }
+  .score-global .label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .sub-scores { flex-grow: 1; }
+  .sub-score { margin-bottom: 10px; }
+  .sub-score:last-child { margin-bottom: 0; }
+  .sub-score-head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+  .sub-score-head .name { font-weight: 600; }
+  .sub-score-head .value { color: var(--text-muted); }
+  .bar-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 3px;
+  }
+  .sub-score-explanation {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+  .page2 { page-break-before: always; padding-top: 4px; }
+  h2 {
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .poi-grid {
+    list-style: none;
+    margin: 0 0 26px 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .poi-grid li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .poi-grid svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: var(--accent);
+  }
+  .accessibility {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 26px;
+  }
+  .iso-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-size: 11px;
+  }
+  .iso-pill svg { width: 14px; height: 14px; color: var(--accent); }
+  .narrative {
+    background: var(--bg);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 10px 10px 0;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+  .footer {
+    font-size: 9px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+</style>
 </head>
 <body>
+
+{% macro poi_icon(category) %}
+{% if category == 'educacion' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5-10-5z"/><path d="M6 11.5V17c0 1.5 2.7 3 6 3s6-1.5 6-3v-5.5"/><path d="M22 9v6"/></svg>
+{% elif category == 'salud' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+{% elif category == 'transporte' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="11" rx="2"/><line x1="3" y1="11" x2="21" y2="11"/><circle cx="7.5" cy="19" r="1.3"/><circle cx="16.5" cy="19" r="1.3"/></svg>
+{% elif category == 'comercio' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+{% elif category == 'restaurantes' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+{% elif category == 'parques' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><line x1="12" y1="14" x2="12" y2="21"/></svg>
+{% elif category == 'bancos' %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-7 9 7"/><line x1="3" y1="21" x2="21" y2="21"/><line x1="5" y1="10" x2="5" y2="21"/><line x1="9" y1="10" x2="9" y2="21"/><line x1="15" y1="10" x2="15" y2="21"/><line x1="19" y1="10" x2="19" y2="21"/></svg>
+{% else %}
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/></svg>
+{% endif %}
+{% endmacro %}
+
+<div class="header">
+  <div class="brand">
+    <svg class="brand-mark" viewBox="0 0 40 40" role="img" aria-label="VecinData">
+      <circle cx="20" cy="20" r="17" fill="none" stroke="currentColor" stroke-width="1.4" opacity="0.35"/>
+      <circle cx="20" cy="20" r="10.5" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.65"/>
+      <circle cx="20" cy="20" r="3.2" fill="var(--accent)"/>
+    </svg>
+    <span class="brand-wordmark">VecinData</span>
+  </div>
   {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" class="brand-logo">{% endif %}
-  <h1>{{ address }}</h1>
+</div>
+
+<h1>{{ address }}</h1>
+
+<div class="maps">
   <img src="{{ map_url }}" alt="Mapa">
   <img src="{{ satellite_url }}" alt="Imagen satelital">
+</div>
 
-  <h2>Puntaje de zona: {{ score.global_score }}</h2>
-  <ul>
+<div class="score-section">
+  <div class="score-global">
+    <div class="value">{{ score.global_score }}<span class="max">/10</span></div>
+    <div class="label">Puntaje de zona</div>
+  </div>
+  <div class="sub-scores">
   {% for sub in score.sub_scores %}
-    <li>{{ sub.name }}: {{ sub.value }} — {{ sub.explanation }}</li>
+    <div class="sub-score">
+      <div class="sub-score-head">
+        <span class="name">
+        {%- if sub.name == 'conectividad' -%}Conectividad
+        {%- elif sub.name == 'servicios' -%}Servicios cercanos
+        {%- elif sub.name == 'areas_verdes' -%}Áreas verdes
+        {%- else -%}{{ sub.name }}
+        {%- endif -%}
+        </span>
+        <span class="value">{{ sub.value }}/10</span>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width: {{ (sub.value * 10) | round | int }}%"></div></div>
+      <div class="sub-score-explanation">{{ sub.explanation }}</div>
+    </div>
   {% endfor %}
-  </ul>
+  </div>
+</div>
 
-  <h3>Qué hay alrededor</h3>
-  <ul>
-  {% for category, items in pois.items() %}
-    <li>{{ category }}: {{ items|length }} encontrados{% if items %} (el más cercano a {{ "%.0f"|format(items[0].distance_m) }} m){% endif %}</li>
-  {% endfor %}
-  </ul>
+<div class="page2">
 
-  <h3>Accesibilidad</h3>
-  <ul>
-  {% for iso in isochrones %}
-    <li>{{ iso.minutes }} min caminando</li>
-  {% endfor %}
-  </ul>
+<h2>Qué hay alrededor</h2>
+<ul class="poi-grid">
+{% for category, items in pois.items() %}
+  <li>{{ poi_icon(category) }}{{ category }}: {{ items|length }} encontrados{% if items %} (el más cercano a {{ "%.0f"|format(items[0].distance_m) }} m){% endif %}</li>
+{% endfor %}
+</ul>
 
-  <p>{{ narrative }}</p>
-  <p><small>Datos de OpenStreetMap y otras fuentes abiertas; pueden no estar actualizados.</small></p>
+<h2>Accesibilidad</h2>
+<div class="accessibility">
+{% for iso in isochrones %}
+  <span class="iso-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>{{ iso.minutes }} min caminando</span>
+{% endfor %}
+</div>
+
+<h2>Resumen</h2>
+<p class="narrative">{{ narrative }}</p>
+
+<p class="footer">Datos de OpenStreetMap y otras fuentes abiertas; pueden no estar actualizados.</p>
+
+</div>
+
 </body>
 </html>

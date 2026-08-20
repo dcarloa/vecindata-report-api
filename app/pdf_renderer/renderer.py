@@ -18,7 +18,11 @@ def render_pdf(report: dict) -> bytes:
         try:
             page = browser.new_page()
             page.set_content(html)
-            pdf_bytes = page.pdf(format="A4")
+            pdf_bytes = page.pdf(
+                format="A4",
+                print_background=True,
+                margin={"top": "18mm", "bottom": "16mm", "left": "16mm", "right": "16mm"},
+            )
         finally:
             browser.close()
     return pdf_bytes
