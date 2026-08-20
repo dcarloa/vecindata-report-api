@@ -104,6 +104,60 @@ def test_create_report_branding_fields_default_to_none(mock_build, mock_render):
     assert rendered_report["brand_color"] is None
 
 
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+def test_create_report_passes_advisor_fields_into_report_dict(mock_build, mock_render):
+    client.post(
+        "/reports",
+        json={
+            "address": "Calle 100, Bogotá",
+            "lat": 4.6097,
+            "lon": -74.0817,
+            "advisor_name": "Ana Torres",
+            "advisor_whatsapp": "+57 300 123 4567",
+            "advisor_email": "ana@example.com",
+            "tagline": "Presentado por Inmobiliaria XYZ",
+        },
+    )
+    rendered_report = mock_render.call_args[0][0]
+    assert rendered_report["advisor_name"] == "Ana Torres"
+    assert rendered_report["advisor_whatsapp"] == "+57 300 123 4567"
+    assert rendered_report["advisor_whatsapp_link"] == "https://wa.me/573001234567"
+    assert rendered_report["advisor_email"] == "ana@example.com"
+    assert rendered_report["tagline"] == "Presentado por Inmobiliaria XYZ"
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+def test_create_report_advisor_fields_default_to_none(mock_build, mock_render):
+    client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+    rendered_report = mock_render.call_args[0][0]
+    assert rendered_report["advisor_name"] is None
+    assert rendered_report["advisor_whatsapp"] is None
+    assert rendered_report["advisor_whatsapp_link"] is None
+    assert rendered_report["advisor_email"] is None
+    assert rendered_report["tagline"] is None
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report", return_value={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+def test_create_report_treats_unparseable_whatsapp_as_plain_text(mock_build, mock_render):
+    """A value that doesn't look like a phone number (e.g. a WhatsApp
+    username slug) must not become a broken wa.me link."""
+    client.post(
+        "/reports",
+        json={
+            "address": "Calle 100, Bogotá",
+            "lat": 4.6097,
+            "lon": -74.0817,
+            "advisor_whatsapp": "no-es-un-numero",
+        },
+    )
+    rendered_report = mock_render.call_args[0][0]
+    assert rendered_report["advisor_whatsapp"] == "no-es-un-numero"
+    assert rendered_report["advisor_whatsapp_link"] is None
+
+
 @patch("app.main.render_pdf")
 @patch("app.main.build_full_report")
 def test_create_report_rejects_malformed_brand_color(mock_build, mock_render):

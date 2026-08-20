@@ -92,3 +92,38 @@ def test_render_html_omits_logo_when_not_provided():
     report = {**_SAMPLE_REPORT, "logo_url": None, "brand_color": None}
     html = render_html(report)
     assert "<img" not in html.split("<h1>")[0]
+
+
+def test_render_html_shows_advisor_contact_and_tagline_when_provided():
+    report = {
+        **_SAMPLE_REPORT,
+        "advisor_name": "Ana Torres",
+        "advisor_whatsapp": "+57 300 123 4567",
+        "advisor_whatsapp_link": "https://wa.me/573001234567",
+        "advisor_email": "ana@example.com",
+        "tagline": "Presentado por Inmobiliaria XYZ",
+    }
+    html = render_html(report)
+    assert "Ana Torres" in html
+    assert '<a href="https://wa.me/573001234567">+57 300 123 4567</a>' in html
+    assert '<a href="mailto:ana@example.com">ana@example.com</a>' in html
+    assert "Presentado por Inmobiliaria XYZ" in html
+
+
+def test_render_html_falls_back_to_plain_text_when_whatsapp_has_no_link():
+    report = {
+        **_SAMPLE_REPORT,
+        "advisor_whatsapp": "no-es-un-numero",
+        "advisor_whatsapp_link": None,
+    }
+    html = render_html(report)
+    assert "no-es-un-numero" in html
+    assert "wa.me" not in html
+
+
+def test_render_html_omits_advisor_block_when_not_provided():
+    html = render_html(_SAMPLE_REPORT)
+    # "advisor" still appears in the <style> block's class names — check the
+    # actual markup, not the CSS, for absence.
+    assert '<div class="advisor">' not in html
+    assert '<p class="tagline">' not in html

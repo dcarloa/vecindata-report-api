@@ -44,6 +44,29 @@
     color: var(--text-muted);
   }
   .brand-logo { max-height: 32px; max-width: 140px; }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .advisor {
+    text-align: right;
+    font-size: 9px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .advisor-name {
+    font-weight: 700;
+    color: var(--text);
+    font-size: 10px;
+  }
+  .advisor a { color: var(--text-muted); text-decoration: none; }
+  .tagline {
+    font-size: 10px;
+    font-style: italic;
+    color: var(--text-muted);
+    margin: 0 0 18px;
+  }
   h1 {
     font-size: 26px;
     color: var(--accent);
@@ -210,8 +233,19 @@
     </svg>
     <span class="brand-wordmark">VecinData</span>
   </div>
-  {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" class="brand-logo">{% endif %}
+  <div class="header-right">
+    {% if logo_url %}<img src="{{ logo_url }}" alt="Logo" class="brand-logo">{% endif %}
+    {% if advisor_name or advisor_whatsapp or advisor_email %}
+    <div class="advisor">
+      {% if advisor_name %}<div class="advisor-name">{{ advisor_name }}</div>{% endif %}
+      {% if advisor_whatsapp %}<div>{% if advisor_whatsapp_link %}<a href="{{ advisor_whatsapp_link }}">{{ advisor_whatsapp }}</a>{% else %}{{ advisor_whatsapp }}{% endif %}</div>{% endif %}
+      {% if advisor_email %}<div><a href="mailto:{{ advisor_email }}">{{ advisor_email }}</a></div>{% endif %}
+    </div>
+    {% endif %}
+  </div>
 </div>
+
+{% if tagline %}<p class="tagline">{{ tagline }}</p>{% endif %}
 
 <h1>{{ address }}</h1>
 
