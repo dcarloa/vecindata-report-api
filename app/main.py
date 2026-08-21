@@ -101,7 +101,14 @@ def create_report(request: ReportRequest, x_operator_key: str | None = Header(de
                 client=genai.Client(vertexai=True, api_key=settings.google_api_key)
             ),
             radius_m=request.radius_m,
-            visible_categories=request.visible_categories,
+            # build_full_report is typed `list[str] | None` and does plain string
+            # membership checks against `pois` dict keys. Passing enum members
+            # only works today because Categoria subclasses str — convert
+            # explicitly so the contract holds regardless of that implementation
+            # detail.
+            visible_categories=(
+                [c.value for c in request.visible_categories] if request.visible_categories else None
+            ),
         )
         report["logo_url"] = request.logo_url
         report["brand_color"] = request.brand_color
