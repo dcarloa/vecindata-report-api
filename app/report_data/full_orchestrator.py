@@ -39,7 +39,7 @@ def build_full_report(
         "satellite_url": staticmap_provider.satellite_url(coords.lat, coords.lon),
     }
 
-    score = calculate_scores(report)
+    score = calculate_scores(report, radius_m=radius_m)
     report["score"] = score.model_dump()
 
     if visible_categories is not None:
