@@ -1,3 +1,5 @@
+import threading
+import time
 from unittest.mock import MagicMock, patch
 from app.pdf_renderer.renderer import render_html, render_pdf
 
@@ -79,6 +81,58 @@ def test_render_pdf_closes_browser_even_on_pdf_failure():
             assert str(e) == "Simulated PDF generation failure"
             # Verify browser.close() was called despite the exception
             mock_browser.close.assert_called_once()
+
+
+def test_render_pdf_caps_concurrent_chromium_launches():
+    """Regression test: launching one Chromium process per concurrent request
+    starves the container's fixed CPU/memory. In production, 3 requests
+    landing on the same Cloud Run instance at once drove render time from a
+    normal 12-50s up to 272s/281s, and a later request hit a hard 504 at
+    Cloud Run's 300s timeout. Concurrent render_pdf() calls must never let
+    more than _MAX_CONCURRENT_RENDERS Chromium launches run at the same time.
+    """
+    max_concurrent = 0
+    current_concurrent = 0
+    lock = threading.Lock()
+
+    def fake_launch(*args, **kwargs):
+        nonlocal max_concurrent, current_concurrent
+        with lock:
+            current_concurrent += 1
+            max_concurrent = max(max_concurrent, current_concurrent)
+        time.sleep(0.05)
+        mock_browser = MagicMock()
+        mock_page = MagicMock()
+        mock_browser.new_page.return_value = mock_page
+        mock_page.pdf.return_value = b"%PDF-fake"
+
+        def fake_close():
+            nonlocal current_concurrent
+            with lock:
+                current_concurrent -= 1
+
+        mock_browser.close.side_effect = fake_close
+        return mock_browser
+
+    with patch("app.pdf_renderer.renderer.sync_playwright") as mock_sync_playwright:
+        mock_playwright_instance = MagicMock()
+        mock_sync_playwright.return_value.__enter__ = MagicMock(
+            return_value=mock_playwright_instance
+        )
+        mock_sync_playwright.return_value.__exit__ = MagicMock(return_value=None)
+        mock_playwright_instance.chromium.launch.side_effect = fake_launch
+
+        threads = [
+            threading.Thread(target=render_pdf, args=(_SAMPLE_REPORT,)) for _ in range(6)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    assert max_concurrent <= 2, (
+        f"expected at most 2 concurrent Chromium launches, saw {max_concurrent}"
+    )
 
 
 def test_render_html_shows_logo_when_provided():
