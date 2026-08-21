@@ -53,6 +53,19 @@ class FakePOIProvider:
         return []
 
 
+class MultipleCategoriesFakePOIProvider:
+    """Returns non-empty POI data for multiple categories to enable stronger test assertions."""
+    def find_pois(self, lat, lon, category, radius_m):
+        if category == Categoria.PARQUES:
+            return [POI(name="Parque Central", category=category, lat=lat, lon=lon, distance_m=200.0)]
+        elif category == Categoria.TRANSPORTE:
+            return [
+                POI(name="Estación Metro Calle 100", category=category, lat=lat, lon=lon, distance_m=150.0),
+                POI(name="Ciclovía", category=category, lat=lat, lon=lon, distance_m=300.0),
+            ]
+        return []
+
+
 class FakeRoutingProvider:
     def isochrones(self, lat, lon, minutes):
         return [Isochrone(minutes=m, geojson={}) for m in minutes]
@@ -140,10 +153,17 @@ def test_build_full_report_hides_non_visible_categories_from_output():
 
 
 def test_build_full_report_score_is_identical_regardless_of_visible_categories():
+    """Verify that score is computed from all categories BEFORE filtering.
+
+    Uses a POI provider with multiple non-empty categories (parques, transporte).
+    Filters to show only parques (hiding transporte which has real data).
+    If the implementation incorrectly filtered before scoring, removing transporte's POIs
+    would change the transporte sub-score, causing the test to fail.
+    """
     kwargs = dict(
         address="Calle 100 # 15-20, Bogotá",
         coords=FAKE_COORDS,
-        poi_provider=FakePOIProvider(),
+        poi_provider=MultipleCategoriesFakePOIProvider(),
         routing_provider=FakeRoutingProvider(),
         staticmap_provider=FakeStaticMapProvider(),
         narrative_generator=FakeNarrativeGenerator(),
