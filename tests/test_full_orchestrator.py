@@ -124,3 +124,51 @@ def test_narrative_payload_excludes_map_tokens_and_isochrone_geojson():
 
     assert set(captured) == {"address", "pois", "score"}
     assert "SECRET_TOKEN" not in str(captured)
+
+
+def test_build_full_report_hides_non_visible_categories_from_output():
+    report = build_full_report(
+        address="Calle 100 # 15-20, Bogotá",
+        coords=FAKE_COORDS,
+        poi_provider=FakePOIProvider(),
+        routing_provider=FakeRoutingProvider(),
+        staticmap_provider=FakeStaticMapProvider(),
+        narrative_generator=FakeNarrativeGenerator(),
+        visible_categories=["parques"],
+    )
+    assert list(report["pois"].keys()) == ["parques"]
+
+
+def test_build_full_report_score_is_identical_regardless_of_visible_categories():
+    kwargs = dict(
+        address="Calle 100 # 15-20, Bogotá",
+        coords=FAKE_COORDS,
+        poi_provider=FakePOIProvider(),
+        routing_provider=FakeRoutingProvider(),
+        staticmap_provider=FakeStaticMapProvider(),
+        narrative_generator=FakeNarrativeGenerator(),
+    )
+    full = build_full_report(**kwargs, visible_categories=None)
+    filtered = build_full_report(**kwargs, visible_categories=["parques"])
+
+    assert full["score"] == filtered["score"]
+
+
+def test_build_full_report_narrative_payload_only_sees_visible_categories():
+    seen_pois = {}
+
+    class SpyNarrativeGenerator:
+        def generate(self, report_data):
+            seen_pois.update(report_data["pois"])
+            return "resumen"
+
+    build_full_report(
+        address="Calle 100 # 15-20, Bogotá",
+        coords=FAKE_COORDS,
+        poi_provider=FakePOIProvider(),
+        routing_provider=FakeRoutingProvider(),
+        staticmap_provider=FakeStaticMapProvider(),
+        narrative_generator=SpyNarrativeGenerator(),
+        visible_categories=["parques"],
+    )
+    assert list(seen_pois.keys()) == ["parques"]

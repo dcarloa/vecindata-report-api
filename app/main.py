@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.cache import Cache
-from app.models import Coordinates
+from app.models import Categoria, Coordinates
 from app.pois.overpass import OverpassPOIProvider
 from app.routing.openrouteservice import OpenRouteServiceRouting
 from app.staticmap.mapbox import MapboxStaticMapProvider
@@ -61,6 +61,7 @@ class ReportRequest(BaseModel):
     # trigger SSRF against internal services or cloud metadata endpoints.
     brand_color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
     radius_m: Literal[500, 1000, 2000] = 1000
+    visible_categories: list[Categoria] | None = Field(default=None, min_length=1)
     advisor_name: str | None = None
     advisor_whatsapp: str | None = None
     advisor_email: str | None = None
@@ -100,6 +101,7 @@ def create_report(request: ReportRequest, x_operator_key: str | None = Header(de
                 client=genai.Client(vertexai=True, api_key=settings.google_api_key)
             ),
             radius_m=request.radius_m,
+            visible_categories=request.visible_categories,
         )
         report["logo_url"] = request.logo_url
         report["brand_color"] = request.brand_color

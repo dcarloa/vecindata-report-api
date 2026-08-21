@@ -17,6 +17,7 @@ def build_full_report(
     staticmap_provider: StaticMapProvider,
     narrative_generator: NarrativeGenerator,
     radius_m: int = 1000,
+    visible_categories: list[str] | None = None,
 ) -> dict:
     pois = {
         category.value: [
@@ -40,6 +41,12 @@ def build_full_report(
 
     score = calculate_scores(report)
     report["score"] = score.model_dump()
+
+    if visible_categories is not None:
+        report["pois"] = {
+            cat: items for cat, items in report["pois"].items()
+            if cat in visible_categories
+        }
 
     narrative_payload = {
         "address": report["address"],

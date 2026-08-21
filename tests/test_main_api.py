@@ -275,3 +275,52 @@ def test_no_access_key_configured_disables_the_gate(mock_build, mock_render, mon
     response = client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
     assert response.status_code == 200
     mock_build.assert_called_once()
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report")
+def test_create_report_passes_visible_categories_to_build_full_report(mock_build, mock_render):
+    mock_build.return_value = {"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817, "pois": {}}
+    client.post(
+        "/reports",
+        json={
+            "address": "Calle 100, Bogotá",
+            "lat": 4.6097,
+            "lon": -74.0817,
+            "visible_categories": ["parques", "transporte"],
+        },
+    )
+    assert mock_build.call_args.kwargs["visible_categories"] == ["parques", "transporte"]
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report")
+def test_create_report_defaults_visible_categories_to_none(mock_build, mock_render):
+    mock_build.return_value = {"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817, "pois": {}}
+    client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+    assert mock_build.call_args.kwargs["visible_categories"] is None
+
+
+@patch("app.main.build_full_report")
+def test_create_report_rejects_unknown_category(mock_build):
+    response = client.post(
+        "/reports",
+        json={
+            "address": "Calle 100, Bogotá",
+            "lat": 4.6097,
+            "lon": -74.0817,
+            "visible_categories": ["no-existe"],
+        },
+    )
+    assert response.status_code == 422
+    mock_build.assert_not_called()
+
+
+@patch("app.main.build_full_report")
+def test_create_report_rejects_empty_visible_categories_list(mock_build):
+    response = client.post(
+        "/reports",
+        json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817, "visible_categories": []},
+    )
+    assert response.status_code == 422
+    mock_build.assert_not_called()
