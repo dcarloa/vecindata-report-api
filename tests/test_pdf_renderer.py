@@ -127,3 +127,11 @@ def test_render_html_omits_advisor_block_when_not_provided():
     # actual markup, not the CSS, for absence.
     assert '<div class="advisor">' not in html
     assert '<p class="tagline">' not in html
+
+
+def test_render_html_includes_scoring_methodology_note():
+    html = render_html(_SAMPLE_REPORT)
+    assert "conectividad" in html.lower()
+    assert "40%" in html
+    assert "20%" in html
+    assert "siempre" in html.lower()
