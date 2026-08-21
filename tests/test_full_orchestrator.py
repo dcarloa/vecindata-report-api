@@ -192,3 +192,39 @@ def test_build_full_report_narrative_payload_only_sees_visible_categories():
         visible_categories=["parques"],
     )
     assert list(seen_pois.keys()) == ["parques"]
+
+
+def test_build_full_report_narrative_payload_score_excludes_explanations():
+    """Regression test: score explanations are generated pre-filter and can name a
+    hidden category along with its real count (e.g. "Basado en 4 parada(s) de
+    transporte encontradas..." even when transporte is hidden). If the narrative
+    model echoes that text, verify_groundedness correctly rejects it against the
+    filtered `pois` dict and the narrative silently falls back to "Resumen no
+    disponible" — so `explanation` must never reach the narrative payload at all.
+
+    Uses MultipleCategoriesFakePOIProvider so the hidden category (transporte) has
+    real POI data and therefore a real, non-generic explanation string naming it.
+    """
+    captured_score = {}
+
+    class SpyNarrativeGenerator:
+        def generate(self, report_data):
+            captured_score.update(report_data["score"])
+            return "resumen"
+
+    build_full_report(
+        address="Calle 100 # 15-20, Bogotá",
+        coords=FAKE_COORDS,
+        poi_provider=MultipleCategoriesFakePOIProvider(),
+        routing_provider=FakeRoutingProvider(),
+        staticmap_provider=FakeStaticMapProvider(),
+        narrative_generator=SpyNarrativeGenerator(),
+        visible_categories=["parques"],
+    )
+
+    assert "global_score" in captured_score
+    assert "sub_scores" in captured_score
+    for sub_score in captured_score["sub_scores"]:
+        assert set(sub_score.keys()) == {"name", "value"}
+        assert "explanation" not in sub_score
+    assert "transporte" not in str(captured_score)

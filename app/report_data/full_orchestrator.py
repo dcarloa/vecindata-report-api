@@ -48,10 +48,25 @@ def build_full_report(
             if cat in visible_categories
         }
 
+    # The narrative generator must only see visible-category data. report["score"]
+    # was computed pre-filter (see the Global Constraints in the plan: the score
+    # always sees all 7 categories) and each sub-score's `explanation` is a free-text
+    # string that can name a hidden category along with its real count (e.g. "Basado
+    # en 4 parada(s) de transporte encontradas..." even when transporte is hidden).
+    # If the model echoes that, verify_groundedness correctly rejects it against the
+    # filtered `pois` dict — but that's a silent, confusing fallback. Strip
+    # `explanation` here so the LLM never sees it in the first place; keep only the
+    # numeric/label fields it's allowed to describe.
     narrative_payload = {
         "address": report["address"],
         "pois": report["pois"],
-        "score": report["score"],
+        "score": {
+            "sub_scores": [
+                {"name": sub["name"], "value": sub["value"]}
+                for sub in report["score"]["sub_scores"]
+            ],
+            "global_score": report["score"]["global_score"],
+        },
     }
     narrative = narrative_generator.generate(narrative_payload)
     if not verify_groundedness(narrative, narrative_payload):
