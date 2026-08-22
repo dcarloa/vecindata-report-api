@@ -19,6 +19,7 @@ _SAMPLE_REPORT = {
         "sub_scores": [{"name": "conectividad", "value": 9.0, "explanation": "Buena cobertura de transporte."}],
     },
     "narrative": "Zona bien conectada con acceso a transporte público.",
+    "show_score": True,
 }
 
 
@@ -189,3 +190,19 @@ def test_render_html_includes_scoring_methodology_note():
     assert "40%" in html
     assert "20%" in html
     assert "siempre" in html.lower()
+
+
+def test_render_html_omits_score_section_and_methodology_when_show_score_false():
+    """A location that scores badly shouldn't have that number forced into an
+    ad the operator is trying to make attractive."""
+    report = {**_SAMPLE_REPORT, "show_score": False}
+    html = render_html(report)
+    assert "Puntaje de zona" not in html
+    assert "8.5" not in html
+    assert "El puntaje combina" not in html
+
+
+def test_render_html_shows_score_section_when_show_score_true():
+    html = render_html(_SAMPLE_REPORT)
+    assert "Puntaje de zona" in html
+    assert "8.5" in html

@@ -66,6 +66,7 @@ class ReportRequest(BaseModel):
     advisor_whatsapp: str | None = None
     advisor_email: str | None = None
     tagline: str | None = None
+    show_score: bool = True
 
 
 @app.exception_handler(ValueError)
@@ -109,6 +110,7 @@ def create_report(request: ReportRequest, x_operator_key: str | None = Header(de
             visible_categories=(
                 [c.value for c in request.visible_categories] if request.visible_categories else None
             ),
+            show_score=request.show_score,
         )
         report["logo_url"] = request.logo_url
         report["brand_color"] = request.brand_color

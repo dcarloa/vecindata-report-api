@@ -228,3 +228,42 @@ def test_build_full_report_narrative_payload_score_excludes_explanations():
         assert set(sub_score.keys()) == {"name", "value"}
         assert "explanation" not in sub_score
     assert "transporte" not in str(captured_score)
+
+
+def test_build_full_report_narrative_payload_excludes_score_when_show_score_false():
+    """When the operator omits the score (a bad-scoring location, unhelpful to
+    advertise), the narrative model must have zero access to the numbers —
+    otherwise it could still leak them into the generated summary text even
+    though the PDF section is hidden."""
+    captured = {}
+
+    class SpyNarrativeGenerator:
+        def generate(self, report_data):
+            captured.update(report_data)
+            return "resumen"
+
+    report = build_full_report(
+        address="Calle 100 # 15-20, Bogotá",
+        coords=FAKE_COORDS,
+        poi_provider=FakePOIProvider(),
+        routing_provider=FakeRoutingProvider(),
+        staticmap_provider=FakeStaticMapProvider(),
+        narrative_generator=SpyNarrativeGenerator(),
+        show_score=False,
+    )
+
+    assert "score" not in captured
+    assert report["score"]["global_score"] >= 0  # still computed, just hidden in the PDF
+    assert report["show_score"] is False
+
+
+def test_build_full_report_defaults_show_score_to_true():
+    report = build_full_report(
+        address="Calle 100 # 15-20, Bogotá",
+        coords=FAKE_COORDS,
+        poi_provider=FakePOIProvider(),
+        routing_provider=FakeRoutingProvider(),
+        staticmap_provider=FakeStaticMapProvider(),
+        narrative_generator=FakeNarrativeGenerator(),
+    )
+    assert report["show_score"] is True

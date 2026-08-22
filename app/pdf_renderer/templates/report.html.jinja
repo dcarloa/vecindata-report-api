@@ -260,6 +260,7 @@
   <img src="{{ satellite_url }}" alt="Imagen satelital">
 </div>
 
+{% if show_score %}
 <div class="score-section">
   <div class="score-global">
     <div class="value">{{ score.global_score }}<span class="max">/10</span></div>
@@ -291,6 +292,7 @@
   y áreas verdes (20%, parques cercanos) — siempre sobre las 7 categorías
   consultadas en el radio de búsqueda, sin importar cuáles se muestren abajo.
 </p>
+{% endif %}
 
 <div class="page2">
 

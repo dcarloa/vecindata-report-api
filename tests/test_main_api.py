@@ -301,6 +301,30 @@ def test_create_report_defaults_visible_categories_to_none(mock_build, mock_rend
     assert mock_build.call_args.kwargs["visible_categories"] is None
 
 
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report")
+def test_create_report_passes_show_score_to_build_full_report(mock_build, mock_render):
+    mock_build.return_value = {"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817, "pois": {}}
+    client.post(
+        "/reports",
+        json={
+            "address": "Calle 100, Bogotá",
+            "lat": 4.6097,
+            "lon": -74.0817,
+            "show_score": False,
+        },
+    )
+    assert mock_build.call_args.kwargs["show_score"] is False
+
+
+@patch("app.main.render_pdf", return_value=b"%PDF-fake-bytes")
+@patch("app.main.build_full_report")
+def test_create_report_defaults_show_score_to_true(mock_build, mock_render):
+    mock_build.return_value = {"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817, "pois": {}}
+    client.post("/reports", json={"address": "Calle 100, Bogotá", "lat": 4.6097, "lon": -74.0817})
+    assert mock_build.call_args.kwargs["show_score"] is True
+
+
 @patch("app.main.build_full_report")
 def test_create_report_rejects_unknown_category(mock_build):
     response = client.post(

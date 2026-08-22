@@ -18,6 +18,7 @@ def build_full_report(
     narrative_generator: NarrativeGenerator,
     radius_m: int = 1000,
     visible_categories: list[str] | None = None,
+    show_score: bool = True,
 ) -> dict:
     pois = {
         category.value: [
@@ -60,14 +61,19 @@ def build_full_report(
     narrative_payload = {
         "address": report["address"],
         "pois": report["pois"],
-        "score": {
+    }
+    # When the operator hides the score (e.g. a bad-scoring location that would
+    # be counterproductive to advertise), the narrative model must never see the
+    # numbers at all — otherwise it could still describe them in prose even
+    # though the PDF's score section is hidden.
+    if show_score:
+        narrative_payload["score"] = {
             "sub_scores": [
                 {"name": sub["name"], "value": sub["value"]}
                 for sub in report["score"]["sub_scores"]
             ],
             "global_score": report["score"]["global_score"],
-        },
-    }
+        }
     narrative = narrative_generator.generate(narrative_payload)
     if not verify_groundedness(narrative, narrative_payload):
         narrative = (
@@ -75,5 +81,6 @@ def build_full_report(
             "se basara únicamente en los datos recolectados."
         )
     report["narrative"] = narrative
+    report["show_score"] = show_score
 
     return report
