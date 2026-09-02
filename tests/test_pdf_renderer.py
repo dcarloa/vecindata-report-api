@@ -1,3 +1,5 @@
+import threading
+import time
 from unittest.mock import MagicMock, patch
 from app.pdf_renderer.renderer import render_html, render_pdf
 
@@ -17,6 +19,7 @@ _SAMPLE_REPORT = {
         "sub_scores": [{"name": "conectividad", "value": 9.0, "explanation": "Buena cobertura de transporte."}],
     },
     "narrative": "Zona bien conectada con acceso a transporte público.",
+    "show_score": True,
 }
 
 
@@ -81,6 +84,58 @@ def test_render_pdf_closes_browser_even_on_pdf_failure():
             mock_browser.close.assert_called_once()
 
 
+def test_render_pdf_caps_concurrent_chromium_launches():
+    """Regression test: launching one Chromium process per concurrent request
+    starves the container's fixed CPU/memory. In production, 3 requests
+    landing on the same Cloud Run instance at once drove render time from a
+    normal 12-50s up to 272s/281s, and a later request hit a hard 504 at
+    Cloud Run's 300s timeout. Concurrent render_pdf() calls must never let
+    more than _MAX_CONCURRENT_RENDERS Chromium launches run at the same time.
+    """
+    max_concurrent = 0
+    current_concurrent = 0
+    lock = threading.Lock()
+
+    def fake_launch(*args, **kwargs):
+        nonlocal max_concurrent, current_concurrent
+        with lock:
+            current_concurrent += 1
+            max_concurrent = max(max_concurrent, current_concurrent)
+        time.sleep(0.05)
+        mock_browser = MagicMock()
+        mock_page = MagicMock()
+        mock_browser.new_page.return_value = mock_page
+        mock_page.pdf.return_value = b"%PDF-fake"
+
+        def fake_close():
+            nonlocal current_concurrent
+            with lock:
+                current_concurrent -= 1
+
+        mock_browser.close.side_effect = fake_close
+        return mock_browser
+
+    with patch("app.pdf_renderer.renderer.sync_playwright") as mock_sync_playwright:
+        mock_playwright_instance = MagicMock()
+        mock_sync_playwright.return_value.__enter__ = MagicMock(
+            return_value=mock_playwright_instance
+        )
+        mock_sync_playwright.return_value.__exit__ = MagicMock(return_value=None)
+        mock_playwright_instance.chromium.launch.side_effect = fake_launch
+
+        threads = [
+            threading.Thread(target=render_pdf, args=(_SAMPLE_REPORT,)) for _ in range(6)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+    assert max_concurrent <= 2, (
+        f"expected at most 2 concurrent Chromium launches, saw {max_concurrent}"
+    )
+
+
 def test_render_html_shows_logo_when_provided():
     report = {**_SAMPLE_REPORT, "logo_url": "https://example.com/logo.png", "brand_color": "#1a73e8"}
     html = render_html(report)
@@ -92,3 +147,62 @@ def test_render_html_omits_logo_when_not_provided():
     report = {**_SAMPLE_REPORT, "logo_url": None, "brand_color": None}
     html = render_html(report)
     assert "<img" not in html.split("<h1>")[0]
+
+
+def test_render_html_shows_advisor_contact_and_tagline_when_provided():
+    report = {
+        **_SAMPLE_REPORT,
+        "advisor_name": "Ana Torres",
+        "advisor_whatsapp": "+57 300 123 4567",
+        "advisor_whatsapp_link": "https://wa.me/573001234567",
+        "advisor_email": "ana@example.com",
+        "tagline": "Presentado por Inmobiliaria XYZ",
+    }
+    html = render_html(report)
+    assert "Ana Torres" in html
+    assert '<a href="https://wa.me/573001234567">+57 300 123 4567</a>' in html
+    assert '<a href="mailto:ana@example.com">ana@example.com</a>' in html
+    assert "Presentado por Inmobiliaria XYZ" in html
+
+
+def test_render_html_falls_back_to_plain_text_when_whatsapp_has_no_link():
+    report = {
+        **_SAMPLE_REPORT,
+        "advisor_whatsapp": "no-es-un-numero",
+        "advisor_whatsapp_link": None,
+    }
+    html = render_html(report)
+    assert "no-es-un-numero" in html
+    assert "wa.me" not in html
+
+
+def test_render_html_omits_advisor_block_when_not_provided():
+    html = render_html(_SAMPLE_REPORT)
+    # "advisor" still appears in the <style> block's class names — check the
+    # actual markup, not the CSS, for absence.
+    assert '<div class="advisor">' not in html
+    assert '<p class="tagline">' not in html
+
+
+def test_render_html_includes_scoring_methodology_note():
+    html = render_html(_SAMPLE_REPORT)
+    assert "conectividad" in html.lower()
+    assert "40%" in html
+    assert "20%" in html
+    assert "siempre" in html.lower()
+
+
+def test_render_html_omits_score_section_and_methodology_when_show_score_false():
+    """A location that scores badly shouldn't have that number forced into an
+    ad the operator is trying to make attractive."""
+    report = {**_SAMPLE_REPORT, "show_score": False}
+    html = render_html(report)
+    assert "Puntaje de zona" not in html
+    assert "8.5" not in html
+    assert "El puntaje combina" not in html
+
+
+def test_render_html_shows_score_section_when_show_score_true():
+    html = render_html(_SAMPLE_REPORT)
+    assert "Puntaje de zona" in html
+    assert "8.5" in html

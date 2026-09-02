@@ -1,3 +1,6 @@
+import re
+from typing import Literal
+
 import httpx
 from google import genai
 from fastapi import FastAPI, Header, Request
@@ -7,7 +10,7 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.cache import Cache
-from app.models import Coordinates
+from app.models import Categoria, Coordinates
 from app.pois.overpass import OverpassPOIProvider
 from app.routing.openrouteservice import OpenRouteServiceRouting
 from app.staticmap.mapbox import MapboxStaticMapProvider
@@ -28,6 +31,18 @@ app.add_middleware(
     allow_headers=["Content-Type", "X-Operator-Key"],
 )
 
+def _whatsapp_link(raw: str | None) -> str | None:
+    """A wa.me link only if `raw` plausibly holds a phone number (7-15 digits,
+    the E.164 range) — otherwise the template falls back to showing it as
+    plain text instead of a broken link."""
+    if not raw:
+        return None
+    digits = re.sub(r"\D", "", raw)
+    if not 7 <= len(digits) <= 15:
+        return None
+    return f"https://wa.me/{digits}"
+
+
 if not settings.operator_access_key:
     print("WARNING: OPERATOR_ACCESS_KEY is not set — POST /reports is publicly accessible with no access control.")
 
@@ -45,6 +60,13 @@ class ReportRequest(BaseModel):
     # inject arbitrary CSS and, since rendering runs a real headless Chromium,
     # trigger SSRF against internal services or cloud metadata endpoints.
     brand_color: str | None = Field(default=None, pattern=r"^#[0-9a-fA-F]{6}$")
+    radius_m: Literal[500, 1000, 2000] = 1000
+    visible_categories: list[Categoria] | None = Field(default=None, min_length=1)
+    advisor_name: str | None = None
+    advisor_whatsapp: str | None = None
+    advisor_email: str | None = None
+    tagline: str | None = None
+    show_score: bool = True
 
 
 @app.exception_handler(ValueError)
@@ -79,9 +101,24 @@ def create_report(request: ReportRequest, x_operator_key: str | None = Header(de
             narrative_generator=NarrativeGenerator(
                 client=genai.Client(vertexai=True, api_key=settings.google_api_key)
             ),
+            radius_m=request.radius_m,
+            # build_full_report is typed `list[str] | None` and does plain string
+            # membership checks against `pois` dict keys. Passing enum members
+            # only works today because Categoria subclasses str — convert
+            # explicitly so the contract holds regardless of that implementation
+            # detail.
+            visible_categories=(
+                [c.value for c in request.visible_categories] if request.visible_categories else None
+            ),
+            show_score=request.show_score,
         )
         report["logo_url"] = request.logo_url
         report["brand_color"] = request.brand_color
+        report["advisor_name"] = request.advisor_name
+        report["advisor_whatsapp"] = request.advisor_whatsapp
+        report["advisor_whatsapp_link"] = _whatsapp_link(request.advisor_whatsapp)
+        report["advisor_email"] = request.advisor_email
+        report["tagline"] = request.tagline
         pdf_bytes = render_pdf(report)
         return Response(content=pdf_bytes, media_type="application/pdf")
     except (ValueError, httpx.HTTPError):
