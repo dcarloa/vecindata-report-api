@@ -30,3 +30,26 @@ geocoding al soltar el pin) — confirmado leyendo el bundle minificado.
 versión (rama, stash, u otra máquina) para no tener que reconstruirla desde
 el bundle minificado. Si no aparece, se va a reconstruir desde el bundle y
 quedará versionada en git de aquí en adelante.
+
+---
+
+## 2026-09-03
+
+El bug del pin del mapa (arrastrar no actualiza "Dirección del inmueble") ya
+está arreglado y en `master` (commits `1a280d8`, `f858bdb`). El build local
+(`npm run build`) refleja el fix, pero **no se pudo desplegar a producción**
+(`https://vecindata.dcarloabad.workers.dev`): el subdominio `dcarloabad`
+pertenece a una cuenta de Cloudflare distinta a la mía (jessicapaolapu), y no
+tengo credenciales para desplegar ahí.
+
+**Pendiente / para el otro dev (dcarloa):** necesito que corras
+`wrangler deploy` desde la cuenta que controla `dcarloabad.workers.dev`, o
+que me pases un API Token de esa cuenta con permiso `Workers Scripts: Edit`
+(dash.cloudflare.com → My Profile → API Tokens → plantilla "Edit Cloudflare
+Workers"). Mientras tanto, producción sigue sirviendo el bundle viejo con el
+bug sin arreglar.
+
+Nota aparte: al intentar desplegar con un token de mi cuenta, Wrangler
+registró un subdominio nuevo (`vecindata.vecindata-web.workers.dev`) que no
+es el sitio real — queda ahí sin usar, se puede borrar cuando alguien tenga
+un minuto (dash.cloudflare.com → Workers & Pages → vecindata-web → Delete).
